@@ -1,106 +1,135 @@
 <template>
   <div id="addQuestionView">
-    <h2>创建题目</h2>
-    <a-form :model="form" label-align="left">
-      <a-form-item field="title" label="标题">
-        <a-input v-model="form.title" placeholder="请输入标题" />
-      </a-form-item>
-      <a-form-item field="tags" label="标签">
-        <a-input-tag v-model="form.tags" placeholder="请选择标签" allow-clear />
-      </a-form-item>
-      <a-form-item field="content" label="题目内容">
-        <MdEditor :value="form.content" :handle-change="onContentChange" />
-      </a-form-item>
-      <a-form-item field="answer" label="答案">
-        <MdEditor :value="form.answer" :handle-change="onAnswerChange" />
-      </a-form-item>
-      <a-form-item label="判题配置" :content-flex="false" :merge-props="false">
-        <a-space direction="vertical" style="min-width: 480px">
-          <a-form-item field="judgeConfig.timeLimit" label="时间限制">
-            <a-input-number
-              v-model="form.judgeConfig.timeLimit"
-              placeholder="请输入时间限制"
-              mode="button"
-              min="0"
-              size="large"
-            />
-          </a-form-item>
-          <a-form-item field="judgeConfig.memoryLimit" label="内存限制">
-            <a-input-number
-              v-model="form.judgeConfig.memoryLimit"
-              placeholder="请输入内存限制"
-              mode="button"
-              min="0"
-              size="large"
-            />
-          </a-form-item>
-          <a-form-item field="judgeConfig.stackLimit" label="堆栈限制">
-            <a-input-number
-              v-model="form.judgeConfig.stackLimit"
-              placeholder="请输入堆栈限制"
-              mode="button"
-              min="0"
-              size="large"
-            />
-          </a-form-item>
-        </a-space>
-      </a-form-item>
-      <a-form-item
-        label="测试用例配置"
-        :content-flex="false"
-        :merge-props="false"
-      >
+    <a-card>
+      <h2>创建题目</h2>
+      <a-form :model="form" label-align="left">
+        <a-form-item field="customId" label="题号">
+          <a-input v-model="form.customId" placeholder="请输入题号" />
+        </a-form-item>
+        <a-form-item field="title" label="标题">
+          <a-input v-model="form.title" placeholder="请输入标题" />
+        </a-form-item>
+        <a-form-item field="tags" label="标签">
+          <a-input-tag
+            v-model="form.tags"
+            placeholder="请选择标签"
+            allow-clear
+          />
+        </a-form-item>
+        <a-form-item field="content" label="题目内容">
+          <MdEditor :value="form.content" :handle-change="onContentChange" />
+        </a-form-item>
+        <a-form-item field="description" label="题目说明">
+          <MdEditor
+            :value="form.description"
+            :handle-change="onDescriptionChange"
+          />
+        </a-form-item>
         <a-form-item
-          v-for="(judgeCaseItem, index) of form.judgeCase"
-          :key="index"
-          no-style
+          label="判题配置"
+          :content-flex="false"
+          :merge-props="false"
         >
-          <a-space direction="vertical" style="min-width: 640px">
-            <a-form-item
-              :field="`form.judgeCase[${index}].input`"
-              :label="`输入用例-${index}`"
-              :key="index"
-            >
-              <a-input
-                v-model="judgeCaseItem.input"
-                placeholder="请输入测试输入用例"
+          <a-space direction="vertical" style="min-width: 480px">
+            <a-form-item field="judgeConfig.timeLimit" label="时间限制">
+              <a-input-number
+                v-model="form.judgeConfig.timeLimit"
+                placeholder="请输入时间限制"
+                mode="button"
+                min="0"
+                size="large"
               />
             </a-form-item>
-            <a-form-item
-              :field="`form.judgeCase[${index}].output`"
-              :label="`输出用例-${index}`"
-              :key="index"
-            >
-              <a-input
-                v-model="judgeCaseItem.output"
-                placeholder="请输入测试输出用例"
+            <a-form-item field="judgeConfig.memoryLimit" label="内存限制">
+              <a-input-number
+                v-model="form.judgeConfig.memoryLimit"
+                placeholder="请输入内存限制"
+                mode="button"
+                min="0"
+                size="large"
               />
             </a-form-item>
-            <a-button status="danger" @click="handleDelete(index)">
-              删除
-            </a-button>
           </a-space>
         </a-form-item>
-        <div style="margin-top: 32px">
-          <a-button @click="handleAdd" type="outline" status="success"
-            >新增测试用例
+        <a-form-item
+          label="测试用例配置"
+          :content-flex="false"
+          :merge-props="false"
+        >
+          <a-form-item
+            v-for="(judgeCaseItem, index) of form.judgeCase"
+            :key="index"
+            no-style
+          >
+            <a-space direction="vertical" style="min-width: 640px">
+              <a-form-item
+                :field="`form.judgeCase[${index}].input`"
+                :label="`输入用例-${index}`"
+                :key="index"
+              >
+                <a-input
+                  v-model="judgeCaseItem.input"
+                  placeholder="请输入测试输入用例"
+                />
+              </a-form-item>
+              <a-form-item
+                :field="`form.judgeCase[${index}].output`"
+                :label="`输出用例-${index}`"
+                :key="index"
+              >
+                <a-input
+                  v-model="judgeCaseItem.output"
+                  placeholder="请输入测试输出用例"
+                />
+              </a-form-item>
+              <a-button status="danger" @click="handleDelete(index)">
+                删除
+              </a-button>
+            </a-space>
+          </a-form-item>
+          <div style="margin-top: 32px">
+            <a-space>
+              <a-upload
+                accept=".zip"
+                :show-file-list="false"
+                :custom-request="doUploadJudgeCaseFile"
+              >
+                <template #upload-button>
+                  <a-button type="outline" status="success"
+                    >上传判题用例压缩包
+                  </a-button>
+                </template>
+              </a-upload>
+              <a-button @click="handleAdd" type="outline" status="success"
+                >新增测试用例
+              </a-button>
+            </a-space>
+            <div v-if="uploadFileName" style="margin-top: 12px">
+              <a-space>
+                <a-tag color="green">已上传压缩包</a-tag>
+                <span>{{ uploadFileName }}</span>
+              </a-space>
+            </div>
+          </div>
+        </a-form-item>
+        <div style="margin-top: 16px" />
+        <a-form-item>
+          <a-button type="primary" style="min-width: 200px" @click="doSubmit"
+            >提交
           </a-button>
-        </div>
-      </a-form-item>
-      <div style="margin-top: 16px" />
-      <a-form-item>
-        <a-button type="primary" style="min-width: 200px" @click="doSubmit"
-          >提交
-        </a-button>
-      </a-form-item>
-    </a-form>
+        </a-form-item>
+      </a-form>
+    </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import MdEditor from "@/components/MdEditor.vue";
-import { QuestionControllerService } from "../../../generated";
+import {
+  FileControllerService,
+  QuestionControllerService,
+} from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
 import { useRoute } from "vue-router";
 
@@ -109,13 +138,13 @@ const route = useRoute();
 const updatePage = route.path.includes("update");
 
 let form = ref({
+  customId: "",
   title: "",
   tags: [],
-  answer: "",
+  description: "",
   content: "",
   judgeConfig: {
     memoryLimit: 1000,
-    stackLimit: 1000,
     timeLimit: 1000,
   },
   judgeCase: [
@@ -124,6 +153,7 @@ let form = ref({
       output: "",
     },
   ],
+  inOutPath: "",
 });
 
 /**
@@ -153,7 +183,6 @@ const loadData = async () => {
     if (!form.value.judgeConfig) {
       form.value.judgeConfig = {
         memoryLimit: 1000,
-        stackLimit: 1000,
         timeLimit: 1000,
       };
     } else {
@@ -208,6 +237,33 @@ const handleAdd = () => {
 };
 
 /**
+ * 已上传压缩包文件名
+ */
+const uploadFileName = ref("");
+
+/**
+ * 上传判题用例压缩包：直接传给后端,保存返回的文件路径
+ */
+const doUploadJudgeCaseFile = async (option: any) => {
+  // Arco 的 custom-request 回调中,原生文件在 option.fileItem.file
+  const file = option.fileItem?.file as File;
+  if (!file) {
+    option.onError(new Error("未获取到文件"));
+    return;
+  }
+  const res = await FileControllerService.uploadFileUsingPost(file);
+  if (res.code === 0 && res.data) {
+    form.value.inOutPath = res.data;
+    uploadFileName.value = file.name;
+    message.success("压缩包上传成功");
+    option.onSuccess(res);
+  } else {
+    message.error("压缩包上传失败，" + res.message);
+    option.onError(new Error(res.message));
+  }
+};
+
+/**
  * 删除判题用例
  */
 const handleDelete = (index: number) => {
@@ -218,8 +274,8 @@ const onContentChange = (value: string) => {
   form.value.content = value;
 };
 
-const onAnswerChange = (value: string) => {
-  form.value.answer = value;
+const onDescriptionChange = (value: string) => {
+  form.value.description = value;
 };
 </script>
 

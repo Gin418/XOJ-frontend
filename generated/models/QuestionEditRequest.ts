@@ -7,9 +7,11 @@ import type { JudgeCase } from './JudgeCase';
 import type { JudgeConfig } from './JudgeConfig';
 
 export type QuestionEditRequest = {
-    answer?: string;
     content?: string;
+    customId?: string;
+    description?: string;
     id?: number;
+    inOutPath?: string;
     judgeCase?: Array<JudgeCase>;
     judgeConfig?: JudgeConfig;
     tags?: Array<string>;

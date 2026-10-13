@@ -1,11 +1,16 @@
 // Add a request interceptor
 import axios from "axios";
+import store from "@/store";
 
 axios.defaults.withCredentials = true;
 
 axios.interceptors.request.use(
   function (config) {
-    // Do something before request is sent
+    // 携带登录 token 到请求头 uc-token，后端据此识别登录用户
+    const token = store.state.user?.token;
+    if (token) {
+      config.headers["uc-token"] = token;
+    }
     return config;
   },
   function (error) {

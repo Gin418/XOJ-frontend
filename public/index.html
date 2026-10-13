@@ -6,6 +6,23 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="<%= BASE_URL %>favicon.ico">
     <title><%= htmlWebpackPlugin.options.title %></title>
+    <script>
+        // 提前拦截 ResizeObserver loop 告警（Monaco 等组件缩放时触发，无害），
+        // 必须先于打包脚本注册，才能阻止 webpack-dev-server 报错遮罩弹窗
+        window.addEventListener(
+            "error",
+            function (event) {
+                if (
+                    event.message &&
+                    event.message.indexOf("ResizeObserver loop") !== -1
+                ) {
+                    event.stopImmediatePropagation();
+                    event.preventDefault();
+                }
+            },
+            true
+        );
+    </script>
 </head>
 <body>
 <noscript>

@@ -11,9 +11,12 @@ export type QuestionVO = {
   acceptedNum?: number;
   content?: string;
   createTime?: string;
+  customId?: string;
+  description?: string;
   favourNum?: number;
   id?: number;
   judgeCase?: Array<JudgeCase>;
+  inOutPath?: string;
   judgeConfig?: JudgeConfig;
   submitNum?: number;
   tags?: Array<string>;

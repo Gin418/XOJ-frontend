@@ -18,9 +18,14 @@
         />
       </a-form-item>
       <a-form-item>
-        <a-button type="primary" html-type="submit" style="width: 120px">
-          登录
-        </a-button>
+        <a-space>
+          <a-button type="primary" html-type="submit" style="width: 120px">
+            登录
+          </a-button>
+          <a-link @click="router.push('/user/register')"
+            >没有账号？去注册</a-link
+          >
+        </a-space>
       </a-form-item>
     </a-form>
   </div>
@@ -30,7 +35,7 @@
 import { reactive } from "vue";
 import { UserControllerService, UserLoginRequest } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 
 /**
@@ -41,6 +46,7 @@ const form = reactive({
   userPassword: "",
 } as UserLoginRequest);
 
+const route = useRoute();
 const router = useRouter();
 const store = useStore();
 
@@ -52,9 +58,17 @@ const handleSubmit = async () => {
   const res = await UserControllerService.userLoginUsingPost(form);
   // 登录成功，跳转到主页
   if (res.code === 0) {
-    await store.dispatch("user/getLoginUser");
+    // 保存登录 token 到 store，后续请求由拦截器统一携带到请求头
+    if (res.data?.token) {
+      store.commit("user/setToken", res.data.token);
+    }
+    // 直接用登录接口返回的用户信息更新 store，不再额外请求 getLoginUser
+    store.commit("user/updateUser", res.data);
+    message.success("登录成功");
+    // 有 redirect 参数则跳回原页面
+    const redirect = route.query.redirect as string;
     router.push({
-      path: "/",
+      path: redirect || "/",
       replace: true,
     });
   } else {

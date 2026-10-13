@@ -10,11 +10,7 @@
       <a-layout-content class="content">
         <router-view />
       </a-layout-content>
-      <a-layout-footer class="footer">
-        <a href="https://yupi.icu" target="_blank">
-          编程导航知识星球 by 程序员鱼皮
-        </a>
-      </a-layout-footer>
+      <a-layout-footer class="footer"> 程序员 X </a-layout-footer>
     </a-layout>
   </div>
 </template>

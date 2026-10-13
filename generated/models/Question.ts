@@ -5,14 +5,16 @@
 
 export type Question = {
     acceptedNum?: number;
-    answer?: string;
     content?: string;
     createTime?: string;
+    customId?: string;
+    description?: string;
     favourNum?: number;
     id?: number;
     isDelete?: number;
     judgeCase?: string;
     judgeConfig?: string;
+    questionStatus?: number;
     submitNum?: number;
     tags?: string;
     thumbNum?: number;

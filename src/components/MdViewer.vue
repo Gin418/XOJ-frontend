@@ -29,4 +29,19 @@ const props = withDefaults(defineProps<Props>(), {
 });
 </script>
 
-<style></style>
+<style scoped>
+/* Viewer 模式下让 markdown 内容自适应高度，由页面统一滚动，避免内部滚动条 */
+:deep(.bytemd) {
+  height: auto;
+}
+
+:deep(.bytemd-body) {
+  height: auto;
+  overflow: visible;
+}
+
+:deep(.bytemd-preview) {
+  height: auto;
+  overflow: visible;
+}
+</style>

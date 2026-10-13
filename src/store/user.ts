@@ -9,6 +9,7 @@ export default {
     loginUser: {
       userName: "未登录",
     },
+    token: "",
   }),
   actions: {
     async getLoginUser({ commit, state }, payload) {
@@ -23,10 +24,25 @@ export default {
         });
       }
     },
+    async logout({ commit }) {
+      const res = await UserControllerService.userLogoutUsingPost();
+      if (res.code === 0) {
+        // 清除登录 token
+        commit("setToken", "");
+        commit("updateUser", {
+          userName: "未登录",
+        });
+        return true;
+      }
+      return false;
+    },
   },
   mutations: {
     updateUser(state, payload) {
       state.loginUser = payload;
+    },
+    setToken(state, payload) {
+      state.token = payload;
     },
   },
 } as StoreOptions<any>;

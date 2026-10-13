@@ -1,6 +1,9 @@
 <template>
   <div id="app">
-    <template v-if="route.path.startsWith('/user')">
+    <!-- 登录、注册页不需要顶部菜单栏 -->
+    <template
+      v-if="route.path === '/user/login' || route.path === '/user/register'"
+    >
       <router-view />
     </template>
     <template v-else>

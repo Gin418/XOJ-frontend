@@ -4,11 +4,13 @@
 /* eslint-disable */
 
 export type QuestionQueryRequest = {
-    answer?: string;
     content?: string;
     current?: number;
+    description?: string;
     id?: number;
+    keyword?: string;
     pageSize?: number;
+    questionStatus?: number;
     sortField?: string;
     sortOrder?: string;
     tags?: Array<string>;

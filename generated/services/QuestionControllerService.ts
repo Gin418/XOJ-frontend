@@ -4,10 +4,13 @@
 /* eslint-disable */
 import type { BaseResponse_boolean_ } from '../models/BaseResponse_boolean_';
 import type { BaseResponse_long_ } from '../models/BaseResponse_long_';
+import type { BaseResponse_List_LanguageVO_ } from '../models/BaseResponse_List_LanguageVO_';
+import type { BaseResponse_MySubmitStatsVO_ } from '../models/BaseResponse_MySubmitStatsVO_';
 import type { BaseResponse_Page_Question_ } from '../models/BaseResponse_Page_Question_';
 import type { BaseResponse_Page_QuestionSubmitVO_ } from '../models/BaseResponse_Page_QuestionSubmitVO_';
 import type { BaseResponse_Page_QuestionVO_ } from '../models/BaseResponse_Page_QuestionVO_';
 import type { BaseResponse_Question_ } from '../models/BaseResponse_Question_';
+import type { BaseResponse_QuestionStatsVO_ } from '../models/BaseResponse_QuestionStatsVO_';
 import type { BaseResponse_QuestionVO_ } from '../models/BaseResponse_QuestionVO_';
 import type { DeleteRequest } from '../models/DeleteRequest';
 import type { QuestionAddRequest } from '../models/QuestionAddRequest';
@@ -113,20 +116,94 @@ id?: number,
     }
 
     /**
-     * getQuestionVOById
-     * @param id id
+     * getQuestionVOByCustomId
+     * @param customId customId
      * @returns BaseResponse_QuestionVO_ OK
      * @throws ApiError
      */
-    public static getQuestionVoByIdUsingGet(
-id?: number,
+    public static getQuestionVoByCustomIdUsingGet(
+customId?: string,
 ): CancelablePromise<BaseResponse_QuestionVO_> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/question/get/vo',
             query: {
-                'id': id,
+                'customId': customId,
             },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
+     * getQuestionStats：按用户 id 获取答题统计（总提交数、通过数）
+     * @param id 用户 id
+     * @returns BaseResponse_QuestionStatsVO_ OK
+     * @throws ApiError
+     */
+    public static getQuestionStatsUsingGet(
+id: number,
+): CancelablePromise<BaseResponse_QuestionStatsVO_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/question/stats/${id}`,
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
+     * getQuestionCount：按用户 id 获取提交次数统计（取 total 字段）
+     * @param id 用户 id
+     * @returns BaseResponse_QuestionStatsVO_ OK
+     * @throws ApiError
+     */
+    public static getQuestionCountUsingGet(
+id: number,
+): CancelablePromise<BaseResponse_QuestionStatsVO_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/question/count/${id}`,
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
+     * getLanguageList：获取编程语言列表
+     * @returns BaseResponse_List_LanguageVO_ OK
+     * @throws ApiError
+     */
+    public static getLanguageListUsingGet(): CancelablePromise<BaseResponse_List_LanguageVO_ | any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/question/language/select',
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
+     * getMySubmitStats：获取当前用户提交统计（今日提交、本月提交、本月通过、连续天数）
+     * @returns BaseResponse_MySubmitStatsVO_ OK
+     * @throws ApiError
+     */
+    public static getMySubmitStatsUsingGet(): CancelablePromise<BaseResponse_MySubmitStatsVO_ | any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/question/question_submit/my/stats',
             errors: {
                 401: `Unauthorized`,
                 403: `Forbidden`,
