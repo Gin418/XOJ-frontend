@@ -15,6 +15,7 @@
     "bytemd": "^1.21.0",
     "core-js": "^3.8.3",
     "form-data": "^4.0.0",
+    "github-markdown-css": "^5.9.0",
     "moment": "^2.29.4",
     "monaco-editor": "^0.41.0",
     "monaco-editor-webpack-plugin": "^7.1.0",

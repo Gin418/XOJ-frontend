@@ -4,7 +4,9 @@
 /* eslint-disable */
 
 export type UserRegisterRequest = {
+    captcha?: string;
     checkPassword?: string;
+    email?: string;
     userAccount?: string;
     userPassword?: string;
 };

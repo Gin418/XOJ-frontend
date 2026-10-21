@@ -1,8 +1,9 @@
 import { RouteRecordRaw } from "vue-router";
-import HomeView from "@/views/ExampleView.vue";
+import HomeView from "@/views/HomeView.vue";
 import UserLayout from "@/layouts/UserLayout.vue";
 import UserLoginView from "@/views/user/UserLoginView.vue";
 import UserRegisterView from "@/views/user/UserRegisterView.vue";
+import UserForgetView from "@/views/user/UserForgetView.vue";
 import UserProfileView from "@/views/user/UserProfileView.vue";
 import UserSettingsView from "@/views/user/UserSettingsView.vue";
 import AdminView from "@/views/AdminView.vue";
@@ -13,8 +14,16 @@ import ManageQuestionView from "@/views/question/ManageQuestionView.vue";
 import QuestionsView from "@/views/question/QuestionsView.vue";
 import QuestionSubmitView from "@/views/question/QuestionSubmitView.vue";
 import ViewQuestionView from "@/views/question/ViewQuestionView.vue";
+import AddContestView from "@/views/contest/AddContestView.vue";
+import ManageContestView from "@/views/contest/ManageContestView.vue";
+import ContestDetailView from "@/views/contest/ContestDetailView.vue";
 
 export const routes: Array<RouteRecordRaw> = [
+  {
+    path: "/",
+    name: "首页",
+    component: HomeView,
+  },
   {
     path: "/user",
     name: "用户",
@@ -29,6 +38,11 @@ export const routes: Array<RouteRecordRaw> = [
         path: "register",
         name: "用户注册",
         component: UserRegisterView,
+      },
+      {
+        path: "forget",
+        name: "忘记密码",
+        component: UserForgetView,
       },
     ],
     meta: {
@@ -54,13 +68,21 @@ export const routes: Array<RouteRecordRaw> = [
   },
   {
     path: "/questions",
-    name: "浏览题目",
+    name: "题库",
     component: QuestionsView,
   },
   {
     path: "/question_submit",
-    name: "浏览题目提交",
+    name: "测评",
     component: QuestionSubmitView,
+  },
+  {
+    path: "/manage/contest",
+    name: "竞赛",
+    component: ManageContestView,
+    meta: {
+      // 未登录也可浏览竞赛列表；页面内的创建/编辑等操作自行校验权限
+    },
   },
   {
     path: "/view/question/:customId",
@@ -81,6 +103,23 @@ export const routes: Array<RouteRecordRaw> = [
     },
   },
   {
+    path: "/add/contest",
+    name: "创建竞赛",
+    component: AddContestView,
+    meta: {
+      access: ACCESS_ENUM.ADMIN,
+    },
+  },
+  {
+    path: "/update/contest",
+    name: "更新竞赛",
+    component: AddContestView,
+    meta: {
+      access: ACCESS_ENUM.ADMIN,
+      hideInMenu: true,
+    },
+  },
+  {
     path: "/update/question",
     name: "更新题目",
     component: AddQuestionView,
@@ -98,10 +137,11 @@ export const routes: Array<RouteRecordRaw> = [
     },
   },
   {
-    path: "/",
-    name: "主页",
-    component: QuestionsView,
+    path: "/view/contest/:id",
+    name: "竞赛详情",
+    component: ContestDetailView,
     meta: {
+      access: ACCESS_ENUM.USER,
       hideInMenu: true,
     },
   },

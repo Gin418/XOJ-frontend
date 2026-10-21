@@ -15,6 +15,7 @@ import type { UserAddRequest } from "../models/UserAddRequest";
 import type { UserLoginRequest } from "../models/UserLoginRequest";
 import type { UserQueryRequest } from "../models/UserQueryRequest";
 import type { UserRegisterRequest } from "../models/UserRegisterRequest";
+import type { UserResetPasswordRequest } from "../models/UserResetPasswordRequest";
 import type { UserUpdateMyRequest } from "../models/UserUpdateMyRequest";
 import type { UserUpdateRequest } from "../models/UserUpdateRequest";
 
@@ -175,6 +176,27 @@ export class UserControllerService {
   }
 
   /**
+   * sendEmailCaptcha：发送邮箱验证码（注册用，6 位数字，5 分钟有效）
+   * @param emailCaptchaSendRequest email 邮箱
+   * @returns BaseResponse_boolean_ OK
+   * @throws ApiError
+   */
+  public static sendEmailCaptchaUsingPost(emailCaptchaSendRequest: {
+    email: string;
+  }): CancelablePromise<BaseResponse_boolean_ | any> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/user/captcha/send/email",
+      body: emailCaptchaSendRequest,
+      errors: {
+        401: `Unauthorized`,
+        403: `Forbidden`,
+        404: `Not Found`,
+      },
+    });
+  }
+
+  /**
    * userLogin
    * @param userLoginRequest userLoginRequest
    * @returns BaseResponse_LoginUserVO_ OK
@@ -253,6 +275,28 @@ export class UserControllerService {
       method: "POST",
       url: "/api/user/register",
       body: userRegisterRequest,
+      errors: {
+        401: `Unauthorized`,
+        403: `Forbidden`,
+        404: `Not Found`,
+      },
+    });
+  }
+
+  /**
+   * userResetPassword
+   * @param userResetPasswordRequest userResetPasswordRequest
+   * @returns BaseResponse_boolean_ OK
+   * @returns any Created
+   * @throws ApiError
+   */
+  public static userResetPasswordUsingPost(
+    userResetPasswordRequest: UserResetPasswordRequest
+  ): CancelablePromise<BaseResponse_boolean_ | any> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/user/reset/password",
+      body: userResetPasswordRequest,
       errors: {
         401: `Unauthorized`,
         403: `Forbidden`,

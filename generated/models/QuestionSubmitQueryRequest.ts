@@ -15,4 +15,5 @@ export type QuestionSubmitQueryRequest = {
     sortOrder?: string;
     status?: string;
     userId?: number;
+    userName?: string;
 };

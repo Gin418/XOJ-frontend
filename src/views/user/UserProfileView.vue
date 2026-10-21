@@ -35,9 +35,79 @@
         </div>
       </div>
     </a-card>
+    <a-card title="提交热力图" class="heatmap-card">
+      <!-- 等级图例：卡片标题栏右上角 -->
+      <template #extra>
+        <div class="heatmap-legend">
+          <span class="heatmap-legend-label">少</span>
+          <div
+            v-for="level in 5"
+            :key="level"
+            :class="['heatmap-cell', `heatmap-level-${level - 1}`]"
+          />
+          <span class="heatmap-legend-label">多</span>
+        </div>
+      </template>
+      <div class="heatmap-body">
+        <div class="heatmap-main">
+          <!-- 左侧星期标签：一 二 三 四 五 六 日，与网格 7 行对齐 -->
+          <div class="heatmap-weekdays">
+            <span v-for="weekday in weekdays" :key="weekday">
+              {{ weekday }}
+            </span>
+          </div>
+          <div class="heatmap-chart">
+            <div class="heatmap-grid">
+              <div
+                v-for="(day, index) in heatmapDates"
+                :key="day?.key ?? `pad-${index}`"
+                class="heatmap-day"
+              >
+                <template v-if="day">
+                  <a-tooltip
+                    :content="`${day.key}：${day.count} 次提交`"
+                    position="top"
+                  >
+                    <div
+                      :class="['heatmap-cell', `heatmap-level-${day.level}`]"
+                    />
+                  </a-tooltip>
+                </template>
+                <div v-else class="heatmap-cell heatmap-pad" />
+              </div>
+            </div>
+            <!-- 底部月份标签：在每月首列下方标注月份 -->
+            <div class="heatmap-months">
+              <span
+                v-for="month in monthLabels"
+                :key="month.col"
+                :style="{ left: `${month.col * 15}px` }"
+              >
+                {{ month.label }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a-card>
+    <!-- 最近提交 / 近期竞赛：同一卡片，按钮切换 -->
     <a-card>
-      <h3 style="margin-top: 0">最近提交</h3>
+      <template #title>
+        <a-radio-group v-model="activityTab" type="button">
+          <a-radio value="submit">最近提交</a-radio>
+          <a-radio value="contest">近期竞赛</a-radio>
+        </a-radio-group>
+      </template>
+      <template #extra>
+        <!-- 查看全部：仅最近提交页签显示 -->
+        <a-link v-if="activityTab === 'submit'" @click="toSubmitPage">
+          查看全部
+        </a-link>
+      </template>
+
+      <!-- 最近提交 -->
       <a-table
+        v-if="activityTab === 'submit'"
         table-layout="fixed"
         :columns="columns"
         :data="submitList"
@@ -79,6 +149,40 @@
           {{ moment(record.createTime).format("YYYY-MM-DD HH:mm:ss") }}
         </template>
       </a-table>
+
+      <!-- 近期竞赛：仅本人可见（接口查询的是当前登录用户参加的竞赛） -->
+      <template v-else>
+        <a-empty v-if="!isSelf" description="近期竞赛仅本人主页可见" />
+        <a-empty
+          v-else-if="!recentContests.length"
+          description="暂无参加的竞赛"
+        />
+        <div v-else class="contest-list">
+          <div
+            v-for="item in recentContests"
+            :key="item.id"
+            class="contest-item"
+            @click="toContestDetail(item)"
+          >
+            <div class="contest-item-header">
+              <span class="contest-item-title">
+                {{ item.competitionTitle }}
+              </span>
+              <a-tag
+                :color="contestStatusColorMap[item.status ?? ''] ?? 'gray'"
+                size="small"
+              >
+                {{ contestStatusTextMap[item.status ?? ""] ?? item.status }}
+              </a-tag>
+            </div>
+            <div class="contest-item-time">
+              {{ moment(item.startTime).format("YYYY/MM/DD HH:mm") }}
+              -
+              {{ moment(item.endTime).format("YYYY/MM/DD HH:mm") }}
+            </div>
+          </div>
+        </div>
+      </template>
     </a-card>
   </div>
 </template>
@@ -90,10 +194,12 @@ import { useStore } from "vuex";
 import moment from "moment";
 import message from "@arco-design/web-vue/es/message";
 import {
+  ContestControllerService,
   QuestionControllerService,
   UserControllerService,
   UserVO,
 } from "../../../generated";
+import type { CompetitionVO, DailySubmitStatsVO } from "../../../generated";
 
 const router = useRouter();
 const route = useRoute();
@@ -305,11 +411,193 @@ const loadCount = async () => {
   }
 };
 
+/* ------------------------------ 提交热力图 ------------------------------ */
+
+/**
+ * 热力图统计天数：最近一年（后端接口上限 365 天）
+ */
+const HEATMAP_DAYS = 365;
+
+/**
+ * 热力图单日数据：日期 / 提交次数 / 颜色等级
+ */
+interface HeatmapDay {
+  key: string;
+  count: number;
+  level: number;
+}
+
+/**
+ * 热力图格子序列：周一对齐的空白占位格 + 最近 365 天的每日数据
+ */
+const heatmapDates = ref<(HeatmapDay | null)[]>([]);
+
+/**
+ * 左侧星期标签：周一至周日
+ */
+const weekdays = ["一", "二", "三", "四", "五", "六", "日"];
+
+/**
+ * 底部月份标签：每月第一次出现时记录（月份 + 所在列索引）
+ * 列索引 = 格子序号 / 7（每列 7 格），标签绝对定位到对应列下方
+ */
+const monthLabels = computed(() => {
+  const labels: { label: string; col: number }[] = [];
+  let lastMonth = "";
+  heatmapDates.value.forEach((day, index) => {
+    if (!day) {
+      return;
+    }
+    const month = day.key.slice(5, 7);
+    if (month !== lastMonth) {
+      labels.push({ label: `${Number(month)}月`, col: Math.floor(index / 7) });
+      lastMonth = month;
+    }
+  });
+  return labels;
+});
+
+/**
+ * 提交次数 → 颜色等级：0 无提交、1-2 浅、3-5 中、6-9 深、10+ 最深
+ */
+const getHeatLevel = (count: number) => {
+  if (count <= 0) {
+    return 0;
+  }
+  if (count <= 2) {
+    return 1;
+  }
+  if (count <= 5) {
+    return 2;
+  }
+  if (count <= 9) {
+    return 3;
+  }
+  return 4;
+};
+
+/**
+ * 应用每日数据：起始日非周一时补空白占位格，保证每列 7 格对齐
+ */
+const applyHeatmapDays = (days: HeatmapDay[]) => {
+  const firstKey = days[0]?.key;
+  const padCount = firstKey ? (moment(firstKey).isoWeekday() + 6) % 7 : 0;
+  heatmapDates.value = [
+    ...Array.from({ length: padCount }, () => null),
+    ...days,
+  ];
+};
+
+/**
+ * 用后端每日统计构建热力图（不传 userId 统计当前用户，传 userId 统计指定用户）
+ */
+const buildHeatmap = (records: DailySubmitStatsVO[]) => {
+  const days: HeatmapDay[] = records.map((record) => {
+    const count = Number(record.submitCount ?? 0);
+    return { key: record.date ?? "", count, level: getHeatLevel(count) };
+  });
+  applyHeatmapDays(days);
+};
+
+/**
+ * 加载提交热力图：请求后端每日统计接口（最近一年）
+ */
+const loadHeatmap = async () => {
+  if (!targetUserId.value) {
+    applyHeatmapDays([]);
+    return;
+  }
+  const res = await QuestionControllerService.getRecentDailySubmitStatsUsingGet(
+    HEATMAP_DAYS,
+    targetUserId.value as any
+  );
+  if (res.code === 0) {
+    buildHeatmap(res.data ?? []);
+  } else {
+    applyHeatmapDays([]);
+  }
+};
+
+/**
+ * 动态卡片切换：submit 最近提交 / contest 近期竞赛
+ */
+const activityTab = ref<"submit" | "contest">("submit");
+
+/**
+ * 点击「查看全部」（最近提交）：跳转测评页面并勾选只看我的
+ */
+const toSubmitPage = () => {
+  router.push({
+    path: "/question_submit",
+    query: { onlyMine: "1" },
+  });
+};
+
+/**
+ * 是否本人主页：近期竞赛接口只查询当前登录用户参加的竞赛
+ */
+const isSelf = computed(() => {
+  return (
+    Boolean(loginUser.value?.id) && targetUserId.value === loginUser.value?.id
+  );
+});
+
+/* ------------------------------ 近期竞赛 ------------------------------ */
+
+/**
+ * 竞赛状态中文映射：NOT_START 待开始、RUNNING 进行中、END 已结束
+ */
+const contestStatusTextMap: Record<string, string> = {
+  NOT_START: "待开始",
+  RUNNING: "进行中",
+  END: "已结束",
+};
+
+/**
+ * 竞赛状态标签颜色：待开始橙、进行中绿、已结束灰
+ */
+const contestStatusColorMap: Record<string, string> = {
+  NOT_START: "orange",
+  RUNNING: "green",
+  END: "gray",
+};
+
+/**
+ * 近期竞赛：当前用户最近参加的 6 个竞赛（按参加时间倒序）
+ */
+const recentContests = ref<CompetitionVO[]>([]);
+
+/**
+ * 加载近期竞赛：请求 /api/competition/my/list（分页接口）
+ */
+const loadRecentContests = async () => {
+  if (!isSelf.value) {
+    return;
+  }
+  const res = await ContestControllerService.listMyCompetitionsUsingGet(1, 6);
+  if (res.code === 0) {
+    recentContests.value = res.data?.records ?? [];
+  } else {
+    message.error("加载近期竞赛失败，" + res.message);
+  }
+};
+
+/**
+ * 点击近期竞赛条目：跳转竞赛详情页
+ */
+const toContestDetail = (item: CompetitionVO) => {
+  router.push({
+    path: `/view/contest/${item.id}`,
+  });
+};
+
 onMounted(() => {
   loadUser();
   loadSubmitList();
   loadStats();
   loadCount();
+  loadHeatmap();
+  loadRecentContests();
 });
 </script>
 
@@ -369,5 +657,157 @@ onMounted(() => {
   white-space: nowrap;
   vertical-align: middle;
   cursor: pointer;
+}
+
+/* 提交热力图卡片：与资料卡之间留出间距 */
+.heatmap-card {
+  margin-bottom: 16px;
+}
+
+/* 热力图主体：主图表（星期 + 网格 + 月份）与图例左右排布 */
+.heatmap-body {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* 主图表：左侧星期标签 + 右侧图表区 */
+.heatmap-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* 左侧星期标签：与网格 7 行一一对齐（12px 行高 + 3px 间距） */
+.heatmap-weekdays {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-weekdays span {
+  height: 12px;
+  line-height: 12px;
+  font-size: 10px;
+  color: #86909c;
+}
+
+/* 图表区：宽度收缩到网格实际宽度，月份行与网格列对齐 */
+.heatmap-chart {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+/* 热力图网格：按列流动排列（每列 7 格 = 一周），横向可滚动 */
+.heatmap-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 12px);
+  grid-auto-columns: 12px;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+/* 底部月份标签行：标签按列位置绝对定位（列宽 12px + 间距 3px = 15px） */
+.heatmap-months {
+  position: relative;
+  height: 18px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: #86909c;
+}
+
+.heatmap-months span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+}
+
+/* 单日格子：固定尺寸圆角 */
+.heatmap-cell {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* 颜色等级：0 无提交浅灰、1-4 蓝色依次加深（与主题色 #165dff 一致） */
+.heatmap-level-0 {
+  background-color: var(--color-fill-2);
+}
+
+.heatmap-level-1 {
+  background-color: #c9dbff;
+}
+
+.heatmap-level-2 {
+  background-color: #8ab5ff;
+}
+
+.heatmap-level-3 {
+  background-color: #4d8dff;
+}
+
+.heatmap-level-4 {
+  background-color: #165dff;
+}
+
+/* 图例（卡片标题栏右上角）：少 → 多，与格子同尺寸 */
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.heatmap-legend-label {
+  margin: 0 4px;
+  font-size: 12px;
+  color: #86909c;
+}
+
+/* 近期竞赛列表 */
+.contest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 竞赛条目：可点击卡片样式 */
+.contest-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background-color: var(--color-fill-1);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.contest-item:hover {
+  background-color: var(--color-fill-2);
+}
+
+/* 竞赛条目头部：标题 + 状态标签 */
+.contest-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.contest-item-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1d2129;
+}
+
+/* 竞赛起止时间 */
+.contest-item-time {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #86909c;
 }
 </style>

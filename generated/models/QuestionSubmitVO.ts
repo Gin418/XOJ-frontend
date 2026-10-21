@@ -11,13 +11,16 @@ import type { UserVO } from './UserVO';
 export type QuestionSubmitVO = {
     code?: string;
     createTime?: string;
+    customId?: string;
     id?: number;
     judgeInfo?: JudgeInfo;
     language?: LanguageVO;
     questionId?: number;
+    questionTitle?: string;
     questionVO?: QuestionVO;
     status?: string;
     updateTime?: string;
     userId?: number;
+    userName?: string;
     userVO?: UserVO;
 };

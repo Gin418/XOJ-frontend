@@ -5,6 +5,8 @@
 import type { BaseResponse_boolean_ } from '../models/BaseResponse_boolean_';
 import type { BaseResponse_long_ } from '../models/BaseResponse_long_';
 import type { BaseResponse_List_LanguageVO_ } from '../models/BaseResponse_List_LanguageVO_';
+import type { BaseResponse_List_DailyQuestionRankItemVO_ } from '../models/BaseResponse_List_DailyQuestionRankItemVO_';
+import type { BaseResponse_List_DailySubmitStatsVO_ } from '../models/BaseResponse_List_DailySubmitStatsVO_';
 import type { BaseResponse_MySubmitStatsVO_ } from '../models/BaseResponse_MySubmitStatsVO_';
 import type { BaseResponse_Page_Question_ } from '../models/BaseResponse_Page_Question_';
 import type { BaseResponse_Page_QuestionSubmitVO_ } from '../models/BaseResponse_Page_QuestionSubmitVO_';
@@ -139,6 +141,46 @@ customId?: string,
     }
 
     /**
+     * getDailyQuestion：获取每日一题（以当天日期为随机种子，同一天内题目固定，次日自动更换）
+     * @returns BaseResponse_QuestionVO_ OK
+     * @throws ApiError
+     */
+    public static getDailyQuestionUsingGet(): CancelablePromise<BaseResponse_QuestionVO_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/question/daily',
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
+     * getDailyQuestionRank：获取每日一题解题榜（当天在每日一题上首次通过时间最早的前 N 名）
+     * @param limit 榜单人数（1~10，默认 10）
+     * @returns BaseResponse_List_DailyQuestionRankItemVO_ OK
+     * @throws ApiError
+     */
+    public static getDailyQuestionRankUsingGet(
+limit?: number,
+): CancelablePromise<BaseResponse_List_DailyQuestionRankItemVO_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/question/daily/rank',
+            query: {
+                'limit': limit,
+            },
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
      * getQuestionStats：按用户 id 获取答题统计（总提交数、通过数）
      * @param id 用户 id
      * @returns BaseResponse_QuestionStatsVO_ OK
@@ -204,6 +246,32 @@ id: number,
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/question/question_submit/my/stats',
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
+     * getRecentDailySubmitStats：获取最近 N 天每日提交统计（日期升序、无提交补 0）
+     * @param days 统计天数（1~365）
+     * @param userId 用户 id，不传时统计当前登录用户
+     * @returns BaseResponse_List_DailySubmitStatsVO_ OK
+     * @throws ApiError
+     */
+    public static getRecentDailySubmitStatsUsingGet(
+days: number,
+userId?: string,
+): CancelablePromise<BaseResponse_List_DailySubmitStatsVO_ | any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/question/question_submit/recent/stats',
+            query: {
+                'days': days,
+                'userId': userId,
+            },
             errors: {
                 401: `Unauthorized`,
                 403: `Forbidden`,

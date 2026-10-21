@@ -14,10 +14,12 @@ export type QuestionVO = {
   customId?: string;
   description?: string;
   favourNum?: number;
+  firstAcceptedUserVO?: UserVO;
   id?: number;
   judgeCase?: Array<JudgeCase>;
   inOutPath?: string;
   judgeConfig?: JudgeConfig;
+  questionStatus?: number;
   submitNum?: number;
   tags?: Array<string>;
   thumbNum?: number;

@@ -11,6 +11,14 @@
                 placeholder="请输入"
               />
             </a-form-item>
+            <a-form-item field="userName" label="用户昵称">
+              <a-input
+                v-model="searchParams.userName"
+                :style="{ width: '150px' }"
+                placeholder="请输入"
+                allow-clear
+              />
+            </a-form-item>
             <a-form-item field="languageId" label="编程语言">
               <a-select
                 v-model="searchParams.languageId"
@@ -122,40 +130,6 @@
           </a-table>
         </a-card>
       </a-col>
-      <a-col flex="320px" :style="{ paddingRight: 0 }">
-        <a-card title="我的提交" class="my-stats-card">
-          <div v-if="isLogin" class="stats-grid">
-            <div class="stats-box">
-              <div class="stats-value">
-                {{ myStats?.todaySubmitCount ?? "0" }}
-              </div>
-              <div class="stats-label">今日提交</div>
-            </div>
-            <div class="stats-box">
-              <div class="stats-value">
-                {{ myStats?.monthSubmitCount ?? "0" }}
-              </div>
-              <div class="stats-label">本月提交</div>
-            </div>
-            <div class="stats-box">
-              <div class="stats-value">
-                {{ myStats?.monthAcceptedCount ?? "0" }}
-              </div>
-              <div class="stats-label">本月通过数</div>
-            </div>
-            <div class="stats-box">
-              <div class="stats-value">
-                {{ myStats?.continuousSubmitDays ?? "0" }}
-              </div>
-              <div class="stats-label">连续天数</div>
-            </div>
-          </div>
-          <div v-else class="login-tip">
-            <div class="login-tip-text">登录后查看我的提交</div>
-            <a-button type="primary" @click="toLogin">去登录</a-button>
-          </div>
-        </a-card>
-      </a-col>
     </a-row>
     <!-- 查看提交代码弹窗 -->
     <a-modal
@@ -227,9 +201,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watchEffect } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import {
   LanguageVO,
-  MySubmitStatsVO,
   Question,
   QuestionControllerService,
   QuestionSubmitQueryRequest,
@@ -237,7 +211,6 @@ import {
 } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
 import { IconCopy, IconLock } from "@arco-design/web-vue/es/icon";
-import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 import ACCESS_ENUM from "@/access/accessEnum";
 import moment from "moment";
@@ -317,11 +290,17 @@ const formatMemory = (memoryKB: number | undefined) => {
 
 const dataList = ref([]);
 const total = ref(0);
+
+/**
+ * 从个人主页「查看全部」跳转时携带 onlyMine=1，进入页面即勾选只看我的
+ */
+const route = useRoute();
 const searchParams = ref<QuestionSubmitQueryRequest>({
   customId: undefined,
+  userName: undefined,
   languageId: undefined,
   status: undefined,
-  onlyMine: false,
+  onlyMine: route.query.onlyMine === "1",
   pageSize: 20,
   current: 1,
 });
@@ -355,16 +334,10 @@ watchEffect(() => {
 onMounted(() => {
   // 提交列表由 watchEffect 统一触发加载，此处不重复调用 loadData
   loadLanguageList();
-  loadMyStats();
 });
 
 /**
- * 我的提交统计
- */
-const myStats = ref<MySubmitStatsVO>();
-
-/**
- * 是否已登录：未登录时「我的提交」卡片显示登录引导，不请求统计接口
+ * 是否已登录：未登录时查看提交代码需先登录
  */
 const store = useStore();
 const loginUser = computed(() => store.state.user?.loginUser);
@@ -376,16 +349,6 @@ const isLogin = computed(() => {
     role !== ACCESS_ENUM.NOT_LOGIN
   );
 });
-
-const loadMyStats = async () => {
-  if (!isLogin.value) {
-    return;
-  }
-  const res = await QuestionControllerService.getMySubmitStatsUsingGet();
-  if (res.code === 0) {
-    myStats.value = res.data;
-  }
-};
 
 const columns = [
   {
@@ -551,6 +514,7 @@ const doSubmit = () => {
 const doReset = () => {
   searchParams.value = {
     customId: undefined,
+    userName: undefined,
     languageId: undefined,
     status: undefined,
     onlyMine: false,
@@ -689,46 +653,5 @@ const toLogin = () => {
 /* 弹窗内字段信息与编辑器间距 */
 .code-modal-info {
   margin-bottom: 12px;
-}
-
-/* 我的提交统计卡片：2x2 纯白小方块 */
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.stats-box {
-  background: #fff;
-  border: 1px solid var(--color-border-2);
-  border-radius: 4px;
-  padding: 20px 8px;
-  text-align: center;
-}
-
-.stats-box .stats-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: rgb(var(--primary-6));
-}
-
-.stats-box .stats-label {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--color-text-2);
-}
-
-/* 未登录提示：居中显示登录引导 */
-.login-tip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 24px 8px;
-}
-
-.login-tip-text {
-  font-size: 13px;
-  color: var(--color-text-2);
 }
 </style>

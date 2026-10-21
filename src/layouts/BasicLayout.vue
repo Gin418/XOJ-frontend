@@ -9,11 +9,15 @@
         :class="{
           'content-question-submit': isQuestionSubmit,
           'content-question-detail': isQuestionDetail,
+          'content-contest-detail': isContestDetail || isContestQuestion,
         }"
       >
         <router-view />
       </a-layout-content>
-      <a-layout-footer v-if="!isQuestionDetail" class="footer">
+      <a-layout-footer
+        v-if="!isQuestionDetail && !isContestDetail && !isContestQuestion"
+        class="footer"
+      >
         程序员 X
       </a-layout-footer>
     </a-layout>
@@ -31,7 +35,9 @@
   right: 0;
   z-index: 100;
   background: #fff;
-  box-shadow: #eee 1px 1px 5px;
+  /* 第二个阴影向右铺 20px 白色，盖住顶栏右侧预留的滚动条槽位：
+     阴影不参与布局，不会撑宽文档产生横向滚动条（伪元素会） */
+  box-shadow: #eee 1px 1px 5px, 20px 0 0 0 #fff;
 }
 
 #basicLayout .content {
@@ -57,10 +63,20 @@
   overflow: hidden;
 }
 
+/* 竞赛详情页：顶部贴紧顶部栏（左侧导航贴顶，右侧内容区自行留 20px 间距），底部不留间距，页面不出现滚动条 */
+#basicLayout .content-contest-detail {
+  padding-top: 76px;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
 #basicLayout .footer {
   background: #fff;
   padding: 16px;
   text-align: center;
+  /* 向右铺 20px 白色阴影盖住滚动条预留槽位：阴影不参与布局，
+     不会撑宽文档产生横向滚动条（伪元素会） */
+  box-shadow: 20px 0 0 0 #fff;
 }
 </style>
 
@@ -100,13 +116,28 @@ export default {
     const isQuestionDetail = computed(() =>
       route.path.startsWith("/view/question")
     );
+    // 竞赛详情页隐藏底部栏
+    const isContestDetail = computed(() =>
+      route.path.startsWith("/view/contest")
+    );
+    // 从竞赛进入的题目详情页：保留竞赛顶部栏与左侧导航，隐藏底部栏
+    const isContestQuestion = computed(() =>
+      Boolean(
+        route.path.startsWith("/view/question") && route.query.competitionId
+      )
+    );
     // 浏览题目提交页：内容区背景改为灰色
     const isQuestionSubmit = computed(() => route.path === "/question_submit");
     // 详情页锁定页面滚动（窄屏堆叠时由 CSS 媒体查询恢复）
     watchEffect(() => {
       document.body.classList.toggle("lock-scroll", isQuestionDetail.value);
     });
-    return { isQuestionDetail, isQuestionSubmit };
+    return {
+      isQuestionDetail,
+      isQuestionSubmit,
+      isContestDetail,
+      isContestQuestion,
+    };
   },
 };
 </script>

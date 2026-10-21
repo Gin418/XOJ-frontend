@@ -1,201 +1,274 @@
 <template>
-  <div id="viewQuestionView">
-    <a-row :gutter="[8, 24]" ref="rowRef" class="question-row">
-      <a-col class="left-col" :style="{ flex: `0 0 ${leftWidth}%` }">
-        <div class="left-panel">
-          <a-card class="left-tabs-card">
-            <a-tabs default-active-key="question" @change="onTabChange">
-              <a-tab-pane key="question" title="题目">
-                <a-card
-                  v-if="question"
-                  :title="question.title"
-                  :bordered="false"
-                >
-                  <!-- 时间、内存限制显示在题目名称下方 -->
-                  <a-descriptions
-                    class="limit-info"
-                    :column="{ xs: 1, md: 2, lg: 3 }"
+  <div id="viewQuestionView" :class="{ 'with-competition': isFromContest }">
+    <div class="question-view-layout">
+      <!-- 从竞赛进入时，左侧保留竞赛导航栏（与竞赛详情页共用组件）
+        激活项与来源 tab 一致：从题目列表进入时停留在「题目」 -->
+      <CompetitionSideNav
+        v-if="isFromContest"
+        :competition-id="competitionId"
+        :active-key="String(route.query.tab ?? 'preview')"
+        :questions="questions"
+        :has-joined="true"
+        @nav-click="onContestNavClick"
+        @catalog-toggle="onCatalogToggle"
+      />
+      <a-row :gutter="[8, 24]" ref="rowRef" class="question-row">
+        <a-col class="left-col" :style="{ flex: `0 0 ${leftWidth}%` }">
+          <div class="left-panel">
+            <a-card class="left-tabs-card">
+              <a-tabs v-model:active-key="activeTab" @change="onTabChange">
+                <a-tab-pane key="question" title="题目">
+                  <a-card
+                    v-if="question"
+                    :title="questionTitle"
+                    :bordered="false"
                   >
-                    <a-descriptions-item label="时间限制">
-                      {{ question.judgeConfig.timeLimit ?? 0 }} ms
-                    </a-descriptions-item>
-                    <a-descriptions-item label="内存限制">
-                      {{ question.judgeConfig.memoryLimit ?? 0 }} MB
-                    </a-descriptions-item>
-                  </a-descriptions>
-
-                  <h3>题目描述</h3>
-                  <MdViewer :value="question.content || ''" />
-                  <template
-                    v-if="question.judgeCase && question.judgeCase.length"
-                  >
-                    <div
-                      v-for="(out, index) of question.judgeCase"
-                      :key="index"
+                    <!-- 时间、内存限制显示在题目名称下方 -->
+                    <a-descriptions
+                      class="limit-info"
+                      :column="{ xs: 1, md: 2, lg: 3 }"
                     >
-                      <h3>测试样例 {{ index + 1 }}</h3>
-                      <h5>输入数据</h5>
-                      <MdViewer :value="out.input || ''" />
-                      <h5>输出数据</h5>
-                      <MdViewer :value="out.output || ''" />
-                    </div>
-                  </template>
-                  <p v-else>暂无测试样例</p>
-                  <template v-if="question.description">
-                    <h3>题目说明</h3>
-                    <MdViewer :value="question.description" />
-                  </template>
+                      <a-descriptions-item label="时间限制">
+                        {{ question.judgeConfig?.timeLimit ?? 0 }} ms
+                      </a-descriptions-item>
+                      <a-descriptions-item label="内存限制">
+                        {{ question.judgeConfig?.memoryLimit ?? 0 }} MB
+                      </a-descriptions-item>
+                    </a-descriptions>
 
-                  <template #extra>
-                    <a-space wrap>
-                      <a-tag
-                        v-for="(tag, index) of question.tags"
+                    <h3>题目描述</h3>
+                    <MdViewer :value="question.content || ''" />
+                    <template
+                      v-if="question.judgeCase && question.judgeCase.length"
+                    >
+                      <div
+                        v-for="(out, index) of question.judgeCase"
                         :key="index"
-                        color="green"
-                        >{{ tag }}
-                      </a-tag>
-                    </a-space>
-                  </template>
-                </a-card>
-              </a-tab-pane>
-              <a-tab-pane key="mySubmit" title="我的提交">
-                <a-card>
-                  <a-table
-                    :columns="columns"
-                    :data="submitList"
-                    :pagination="{
-                      showTotal: true,
-                      pageSize: 10,
-                      current: submitCurrent,
-                      total: submitTotal,
-                    }"
-                    @page-change="onPageChange"
-                  >
-                    <template #status="{ record }">
-                      <a-tag :color="getStatusColor(record.status)">
-                        <span
-                          class="status-link"
-                          @click="openCodeModal(record)"
-                        >
-                          {{ statusTextMap[record.status] ?? record.status }}
-                        </span>
-                      </a-tag>
-                    </template>
-                    <template #language="{ record }">
-                      {{ record.language?.text ?? "" }}
-                    </template>
-                    <template #time="{ record }">
-                      <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
-                    </template>
-                    <template #memory="{ record }">
-                      <span>{{ formatMemory(record.judgeInfo?.memory) }}</span>
-                    </template>
-                    <template #createTime="{ record }">
-                      {{
-                        moment(record.createTime).format("YYYY-MM-DD HH:mm:ss")
-                      }}
-                    </template>
-                  </a-table>
-                </a-card>
-              </a-tab-pane>
-              <a-tab-pane key="comment" title="评论" disabled>
-                评论区</a-tab-pane
-              >
-            </a-tabs>
-          </a-card>
-        </div>
-      </a-col>
-      <a-col class="right-col" :style="{ flex: '1 1 0%' }">
-        <a-card class="right-card">
-          <a-form :model="form" layout="inline">
-            <a-form-item field="languageId" label="" style="min-width: 160px">
-              <a-select
-                v-model="form.languageId"
-                :style="{ width: '160px' }"
-                placeholder="选择编程语言"
-              >
-                <a-option
-                  v-for="lang in languageList"
-                  :key="lang.value"
-                  :value="lang.type"
-                >
-                  {{ lang.text }}
-                </a-option>
-              </a-select>
-            </a-form-item>
-            <!-- 编辑器工具按钮：位于编辑器上方靠右 -->
-            <a-form-item label="" style="margin-left: auto">
-              <a-space>
-                <a-popconfirm content="确定要清空代码吗？" @ok="clearCode">
-                  <span class="editor-tool-btn" title="清空代码">
-                    <icon-eraser />
-                  </span>
-                </a-popconfirm>
-                <a-popover
-                  trigger="click"
-                  position="bl"
-                  content-class="editor-settings-popover"
-                >
-                  <span class="editor-tool-btn" title="编辑器设置">
-                    <icon-settings />
-                  </span>
-                  <template #content>
-                    <div class="editor-settings">
-                      <div class="editor-settings-title">编辑器设置</div>
-                      <div class="settings-row">
-                        <span class="settings-label">主题</span>
-                        <a-select
-                          v-model="editorTheme"
-                          :style="{ width: '200px' }"
-                          size="large"
-                        >
-                          <a-option
-                            v-for="theme in editorThemeOptions"
-                            :key="theme"
-                            :value="theme"
-                          >
-                            {{ theme }}
-                          </a-option>
-                        </a-select>
+                      >
+                        <h3>测试样例 {{ index + 1 }}</h3>
+                        <h5>输入数据</h5>
+                        <MdViewer :value="out.input || ''" />
+                        <h5>输出数据</h5>
+                        <MdViewer :value="out.output || ''" />
                       </div>
-                      <div class="settings-row">
-                        <span class="settings-label">字体大小</span>
-                        <a-select
-                          v-model="editorFontSize"
-                          :style="{ width: '200px' }"
-                          size="large"
-                        >
-                          <a-option
-                            v-for="size in editorFontSizeOptions"
-                            :key="size"
-                            :value="size"
+                    </template>
+                    <p v-else>暂无测试样例</p>
+                    <template v-if="question.description">
+                      <h3>题目说明</h3>
+                      <MdViewer :value="question.description" />
+                    </template>
+
+                    <template #extra>
+                      <a-space wrap>
+                        <a-tag
+                          v-for="(tag, index) of question.tags"
+                          :key="index"
+                          color="green"
+                          >{{ tag }}
+                        </a-tag>
+                      </a-space>
+                    </template>
+                  </a-card>
+                </a-tab-pane>
+                <a-tab-pane key="mySubmit" title="我的提交">
+                  <a-card>
+                    <a-table
+                      :columns="columns"
+                      :data="submitList"
+                      :pagination="{
+                        showTotal: true,
+                        pageSize: 10,
+                        current: submitCurrent,
+                        total: submitTotal,
+                      }"
+                      @page-change="onPageChange"
+                    >
+                      <template #status="{ record }">
+                        <a-tag :color="getStatusColor(record.status)">
+                          <span
+                            class="status-link"
+                            @click="openCodeModal(record)"
                           >
-                            {{ size }}
-                          </a-option>
-                        </a-select>
-                      </div>
+                            {{ statusTextMap[record.status] ?? record.status }}
+                          </span>
+                        </a-tag>
+                      </template>
+                      <template #language="{ record }">
+                        {{ record.language?.text ?? "" }}
+                      </template>
+                      <template #time="{ record }">
+                        <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
+                      </template>
+                      <template #memory="{ record }">
+                        <span>{{
+                          formatMemory(record.judgeInfo?.memory)
+                        }}</span>
+                      </template>
+                      <template #createTime="{ record }">
+                        {{
+                          moment(record.createTime).format(
+                            "YYYY-MM-DD HH:mm:ss"
+                          )
+                        }}
+                      </template>
+                    </a-table>
+                  </a-card>
+                </a-tab-pane>
+                <!-- 评论页签：仅从题库（非竞赛）进入时显示，竞赛中不开放讨论 -->
+                <a-tab-pane v-if="!isFromContest" key="comment" title="评论">
+                  <a-card :bordered="false">
+                    <!-- 发评论入口：按钮右对齐 -->
+                    <div class="comment-editor">
+                      <a-button type="primary" @click="openCommentModal">
+                        发评论
+                      </a-button>
                     </div>
-                  </template>
-                </a-popover>
-              </a-space>
-            </a-form-item>
-          </a-form>
-          <div class="editor-wrap">
-            <CodeEditor
-              ref="codeEditorRef"
-              :value="form.code as string"
-              :language="editorLanguage"
-              :handle-change="changeCode"
-              :theme="editorTheme"
-              :font-size="editorFontSize"
-            />
+                    <!-- 评论列表 -->
+                    <a-spin :loading="commentsLoading" class="comment-spin">
+                      <a-empty
+                        v-if="!comments.length && !commentsLoading"
+                        description="暂无评论，快来抢沙发"
+                      />
+                      <div v-else class="comment-list">
+                        <div
+                          v-for="item in comments"
+                          :key="item.id"
+                          class="comment-item"
+                        >
+                          <a-avatar :size="32" class="comment-avatar">
+                            <img
+                              v-if="item.user?.userAvatar"
+                              :src="item.user.userAvatar"
+                            />
+                          </a-avatar>
+                          <div class="comment-main">
+                            <div class="comment-title">
+                              {{ item.title }}
+                            </div>
+                            <div class="comment-meta">
+                              <span class="comment-user">
+                                {{ item.user?.userName ?? "匿名用户" }}
+                              </span>
+                              <span class="comment-time">
+                                {{
+                                  moment(item.createTime).format(
+                                    "YYYY-MM-DD HH:mm"
+                                  )
+                                }}
+                              </span>
+                            </div>
+                            <MdViewer :value="item.content || ''" />
+                          </div>
+                        </div>
+                        <a-pagination
+                          v-if="commentTotal > commentPageSize"
+                          class="comment-pagination"
+                          :total="commentTotal"
+                          :current="commentCurrent"
+                          :page-size="commentPageSize"
+                          show-total
+                          @change="onCommentPageChange"
+                        />
+                      </div>
+                    </a-spin>
+                  </a-card>
+                </a-tab-pane>
+              </a-tabs>
+            </a-card>
           </div>
-          <div class="submit-area">
-            <a-button type="primary" @click="doSubmit">提交代码</a-button>
-          </div>
-        </a-card>
-      </a-col>
-    </a-row>
+        </a-col>
+        <a-col class="right-col" :style="{ flex: '1 1 0%' }">
+          <a-card class="right-card">
+            <a-form :model="form" layout="inline">
+              <a-form-item field="languageId" label="" style="min-width: 160px">
+                <a-select
+                  v-model="form.languageId"
+                  :style="{ width: '160px' }"
+                  placeholder="选择编程语言"
+                >
+                  <a-option
+                    v-for="lang in languageList"
+                    :key="lang.value"
+                    :value="lang.type"
+                  >
+                    {{ lang.text }}
+                  </a-option>
+                </a-select>
+              </a-form-item>
+              <!-- 编辑器工具按钮：位于编辑器上方靠右 -->
+              <a-form-item label="" style="margin-left: auto">
+                <a-space>
+                  <a-popconfirm content="确定要清空代码吗？" @ok="clearCode">
+                    <span class="editor-tool-btn" title="清空代码">
+                      <icon-eraser />
+                    </span>
+                  </a-popconfirm>
+                  <a-popover
+                    trigger="click"
+                    position="bl"
+                    content-class="editor-settings-popover"
+                  >
+                    <span class="editor-tool-btn" title="编辑器设置">
+                      <icon-settings />
+                    </span>
+                    <template #content>
+                      <div class="editor-settings">
+                        <div class="editor-settings-title">编辑器设置</div>
+                        <div class="settings-row">
+                          <span class="settings-label">主题</span>
+                          <a-select
+                            v-model="editorTheme"
+                            :style="{ width: '200px' }"
+                            size="large"
+                          >
+                            <a-option
+                              v-for="theme in editorThemeOptions"
+                              :key="theme"
+                              :value="theme"
+                            >
+                              {{ theme }}
+                            </a-option>
+                          </a-select>
+                        </div>
+                        <div class="settings-row">
+                          <span class="settings-label">字体大小</span>
+                          <a-select
+                            v-model="editorFontSize"
+                            :style="{ width: '200px' }"
+                            size="large"
+                          >
+                            <a-option
+                              v-for="size in editorFontSizeOptions"
+                              :key="size"
+                              :value="size"
+                            >
+                              {{ size }}
+                            </a-option>
+                          </a-select>
+                        </div>
+                      </div>
+                    </template>
+                  </a-popover>
+                </a-space>
+              </a-form-item>
+            </a-form>
+            <div class="editor-wrap">
+              <CodeEditor
+                ref="codeEditorRef"
+                :value="form.code as string"
+                :language="editorLanguage"
+                :handle-change="changeCode"
+                :theme="editorTheme"
+                :font-size="editorFontSize"
+              />
+            </div>
+            <div class="submit-area">
+              <a-button type="primary" @click="doSubmit">提交代码</a-button>
+            </div>
+          </a-card>
+        </a-col>
+      </a-row>
+    </div>
 
     <!-- 查看提交代码弹窗 -->
     <a-modal
@@ -257,12 +330,59 @@
         </div>
       </div>
     </a-modal>
+
+    <!-- 发评论弹窗：标题 + Markdown 内容 -->
+    <a-modal
+      v-model:visible="commentModalVisible"
+      title="发评论"
+      :footer="false"
+      :width="800"
+    >
+      <div class="comment-modal">
+        <a-form :model="commentForm" layout="vertical">
+          <a-form-item field="title" label="标题">
+            <a-input
+              v-model="commentForm.title"
+              placeholder="请输入标题"
+              :max-length="80"
+              show-word-limit
+            />
+          </a-form-item>
+          <!-- content-flex=false：内容区改块级布局，让 Markdown 编辑器占满整行 -->
+          <a-form-item field="content" label="内容" :content-flex="false">
+            <MdEditor
+              :value="commentForm.content"
+              :handle-change="onCommentContentChange"
+            />
+          </a-form-item>
+        </a-form>
+        <div class="comment-modal-footer">
+          <a-button @click="commentModalVisible = false">取消</a-button>
+          <a-button
+            type="primary"
+            :loading="commentSubmitting"
+            @click="doAddComment"
+          >
+            发布
+          </a-button>
+        </div>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, withDefaults, defineProps } from "vue";
+import {
+  computed,
+  onMounted,
+  ref,
+  watch,
+  withDefaults,
+  defineProps,
+} from "vue";
+import { useRoute, useRouter } from "vue-router";
 import message from "@arco-design/web-vue/es/message";
+import CompetitionSideNav from "../../components/CompetitionSideNav.vue";
 import {
   IconCopy,
   IconEraser,
@@ -270,10 +390,14 @@ import {
 } from "@arco-design/web-vue/es/icon";
 import CodeEditor from "@/components/CodeEditor.vue";
 import MdViewer from "@/components/MdViewer.vue";
+import MdEditor from "@/components/MdEditor.vue";
 import { useStore } from "vuex";
 import moment from "moment";
 import {
+  ContestControllerService,
   LanguageVO,
+  PostControllerService,
+  PostVO,
   QuestionControllerService,
   QuestionSubmitAddRequest,
   QuestionSubmitVO,
@@ -287,6 +411,58 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   customId: () => "",
 });
+
+const route = useRoute();
+const router = useRouter();
+
+/**
+ * 是否从竞赛进入（query 带 competitionId）
+ */
+const isFromContest = computed(() => Boolean(route.query.competitionId));
+
+/**
+ * 竞赛 id（从竞赛进入时有值）
+ */
+const competitionId = computed(() => String(route.query.competitionId ?? ""));
+
+/**
+ * 竞赛题目列表（左侧导航栏展开题目目录用）
+ */
+const questions = ref<QuestionVO[]>([]);
+
+/**
+ * 题目目录展开/收起：展开时懒加载竞赛题目列表
+ */
+const onCatalogToggle = (expanded: boolean) => {
+  if (expanded) {
+    loadQuestions();
+  }
+};
+
+/**
+ * 竞赛导航菜单点击：跳回竞赛详情页对应导航页
+ */
+const onContestNavClick = (key: string) => {
+  router.push({
+    path: `/view/contest/${competitionId.value}`,
+    query: key === "preview" ? {} : { tab: key },
+  });
+};
+
+/**
+ * 加载竞赛题目列表
+ */
+const loadQuestions = async () => {
+  if (!competitionId.value) {
+    return;
+  }
+  const res = await ContestControllerService.getCompetitionQuestionsUsingGet(
+    competitionId.value
+  );
+  if (res.code === 0) {
+    questions.value = res.data ?? [];
+  }
+};
 
 /**
  * 测评结果字符串中文映射（与后端枚举字符串一致）
@@ -363,6 +539,23 @@ const leftWidth = ref(50);
 const question = ref<QuestionVO>();
 
 /**
+ * 竞赛内题号（外层 customId）：从竞赛题目接口进入时才有值
+ */
+const competitionCustomId = ref("");
+
+/**
+ * 题目卡片标题：显示「题号. 标题」；竞赛来源用竞赛内题号，普通来源用题目 customId
+ */
+const questionTitle = computed(() => {
+  const title = question.value?.title ?? "";
+  const customId = competitionCustomId.value || question.value?.customId;
+  if (customId) {
+    return `${customId}. ${title}`;
+  }
+  return title;
+});
+
+/**
  * 编程语言列表（从后端接口获取）
  */
 const languageList = ref<LanguageVO[]>([]);
@@ -422,22 +615,36 @@ const columns = [
 
 /**
  * 加载当前用户对该题目的提交记录（每页固定 10 条）
+ * 竞赛来源时使用竞赛提交分页接口（competitionId + questionId + onlyMine）
  */
 const loadSubmitList = async () => {
   if (!loginUser.value?.id) {
     message.warning("请先登录");
     return;
   }
-  const res = await QuestionControllerService.listQuestionSubmitByPageUsingPost(
-    {
+  const competitionId = route.query.competitionId as string | undefined;
+  let res;
+  if (competitionId) {
+    // 竞赛题目：传题目 id（questionVO.id），仅查自己的提交
+    res = await ContestControllerService.listCompetitionSubmitByPageUsingPost({
+      competitionId,
+      questionId: String(question.value?.id ?? ""),
+      onlyMine: true,
+      current: submitCurrent.value,
+      pageSize: 10,
+      sortField: "createTime",
+      sortOrder: "descend",
+    });
+  } else {
+    res = await QuestionControllerService.listQuestionSubmitByPageUsingPost({
       customId: props.customId,
       userId: loginUser.value.id as any,
       pageSize: 10,
       current: submitCurrent.value,
       sortField: "createTime",
       sortOrder: "descend",
-    }
-  );
+    });
+  }
   if (res.code === 0) {
     submitList.value = res.data.records;
     submitTotal.value = res.data.total;
@@ -455,11 +662,186 @@ const onPageChange = (page: number) => {
 };
 
 /**
- * 切换标签页事件：首次切换到“我的提交”时加载数据
+ * 当前激活的标签页：优先读 URL query 的 pane 参数（刷新后保持当前页签），默认题目页；
+ * 竞赛来源不提供评论页签，pane=comment 时回退到题目页
+ */
+const activeTab = ref("question");
+
+const initActiveTab = () => {
+  const pane = String(route.query.pane ?? "");
+  const validPanes = isFromContest.value
+    ? ["question", "mySubmit"]
+    : ["question", "mySubmit", "comment"];
+  activeTab.value = validPanes.includes(pane) ? pane : "question";
+};
+initActiveTab();
+
+/**
+ * 切换标签页事件：同步 pane 参数到 URL（保持刷新后当前页签），
+ * 首次切换到“我的提交”时加载提交数据；首次切换到“评论”时加载评论
  */
 const onTabChange = (key: string | number) => {
+  router.replace({ query: { ...route.query, pane: String(key) } });
   if (key === "mySubmit") {
     loadSubmitList();
+  }
+  if (key === "comment") {
+    loadComments();
+  }
+};
+
+/**
+ * 未登录跳转登录页，登录后回跳当前题目
+ */
+const toLogin = () => {
+  router.push({
+    path: "/user/login",
+    query: { redirect: `/view/question/${props.customId}` },
+  });
+};
+
+/**
+ * 评论区（评论以帖子形式存储：tags 关联题目 customId）
+ */
+const comments = ref<PostVO[]>([]);
+const commentTotal = ref(0);
+const commentCurrent = ref(1);
+const commentPageSize = 10;
+const commentSubmitting = ref(false);
+const commentsLoading = ref(false);
+// 评论是否已加载过（首次切到评论页签时加载，避免重复请求）
+const commentsLoaded = ref(false);
+
+/**
+ * 发评论弹窗：标题 + Markdown 内容
+ */
+const commentModalVisible = ref(false);
+const commentForm = ref<{ title: string; content: string }>({
+  title: "",
+  content: "",
+});
+
+/**
+ * Markdown 内容变更回调
+ */
+const onCommentContentChange = (value: string) => {
+  commentForm.value.content = value;
+};
+
+/**
+ * 打开发评论弹窗：未登录跳转登录页；已登录重置表单后打开
+ */
+const openCommentModal = () => {
+  if (!loginUser.value?.id) {
+    toLogin();
+    return;
+  }
+  commentForm.value = { title: "", content: "" };
+  commentModalVisible.value = true;
+};
+
+/**
+ * 加载评论列表：请求帖子分页接口，按 tags 过滤当前题目（最新在前）
+ */
+const loadComments = async () => {
+  if (!props.customId) {
+    return;
+  }
+  if (commentsLoaded.value) {
+    return;
+  }
+  commentsLoaded.value = true;
+  commentsLoading.value = true;
+  try {
+    const res = await PostControllerService.listPostVoByPageUsingPost({
+      tags: [props.customId],
+      current: commentCurrent.value,
+      pageSize: commentPageSize,
+      sortField: "createTime",
+      sortOrder: "descend",
+    });
+    if (res.code === 0) {
+      comments.value = res.data?.records ?? [];
+      commentTotal.value = res.data?.total ?? 0;
+    } else {
+      message.error("加载评论失败，" + res.message);
+    }
+  } finally {
+    commentsLoading.value = false;
+  }
+};
+
+/**
+ * 评论翻页：更新页码并重新加载
+ */
+const onCommentPageChange = async (page: number) => {
+  commentCurrent.value = page;
+  commentsLoading.value = true;
+  try {
+    const res = await PostControllerService.listPostVoByPageUsingPost({
+      tags: [props.customId],
+      current: commentCurrent.value,
+      pageSize: commentPageSize,
+      sortField: "createTime",
+      sortOrder: "descend",
+    });
+    if (res.code === 0) {
+      comments.value = res.data?.records ?? [];
+      commentTotal.value = res.data?.total ?? 0;
+    } else {
+      message.error("加载评论失败，" + res.message);
+    }
+  } finally {
+    commentsLoading.value = false;
+  }
+};
+
+/**
+ * 发表评论：以帖子形式保存，title 用弹窗标题，content 为 Markdown，tags 关联题目
+ */
+const doAddComment = async () => {
+  if (!loginUser.value?.id) {
+    toLogin();
+    return;
+  }
+  const title = commentForm.value.title.trim();
+  const content = commentForm.value.content.trim();
+  if (!title) {
+    message.warning("标题不能为空");
+    return;
+  }
+  if (!content) {
+    message.warning("内容不能为空");
+    return;
+  }
+  commentSubmitting.value = true;
+  try {
+    const res = await PostControllerService.addPostUsingPost({
+      title,
+      content,
+      tags: [props.customId],
+    });
+    if (res.code === 0) {
+      message.success("发布成功");
+      commentModalVisible.value = false;
+      // 刷新第一页：重新加载并回到第一页
+      commentCurrent.value = 1;
+      const listRes = await PostControllerService.listPostVoByPageUsingPost({
+        tags: [props.customId],
+        current: 1,
+        pageSize: commentPageSize,
+        sortField: "createTime",
+        sortOrder: "descend",
+      });
+      if (listRes.code === 0) {
+        comments.value = listRes.data?.records ?? [];
+        commentTotal.value = listRes.data?.total ?? 0;
+      }
+    } else {
+      message.error("发布失败，" + res.message);
+    }
+  } finally {
+    commentSubmitting.value = false;
   }
 };
 
@@ -516,11 +898,30 @@ const copyCode = async () => {
 };
 
 const loadData = async () => {
-  const res = await QuestionControllerService.getQuestionVoByCustomIdUsingGet(
-    props.customId as any
-  );
+  // 从竞赛题目列表进入（query 带 competitionId）时，使用竞赛题目接口加载
+  const competitionId = route.query.competitionId as string | undefined;
+  let res;
+  if (competitionId) {
+    res =
+      await ContestControllerService.getCompetitionQuestionByCustomIdUsingGet(
+        competitionId,
+        props.customId as any
+      );
+  } else {
+    res = await QuestionControllerService.getQuestionVoByCustomIdUsingGet(
+      props.customId as any
+    );
+  }
   if (res.code === 0) {
-    question.value = res.data;
+    // 竞赛题目接口返回 { questionOrder, customId, questionVO, ... } 嵌套结构，取内层 questionVO
+    question.value = competitionId ? res.data.questionVO : res.data;
+    // 接口返回的题目数据为空时直接结束，避免后续访问报错
+    if (!question.value) {
+      message.error("加载失败，题目数据为空");
+      return;
+    }
+    // 保存竞赛内题号（外层 customId），用于标题显示
+    competitionCustomId.value = competitionId ? res.data.customId ?? "" : "";
     // 兼容 judgeCase 为 JSON 字符串的情况（后端可能存为字符串）
     if (typeof question.value.judgeCase === "string") {
       try {
@@ -528,6 +929,18 @@ const loadData = async () => {
       } catch (e) {
         question.value.judgeCase = [];
       }
+    }
+    // 兼容 judgeConfig 为 JSON 字符串的情况（竞赛题目接口可能存为字符串）
+    if (typeof question.value.judgeConfig === "string") {
+      try {
+        question.value.judgeConfig = JSON.parse(question.value.judgeConfig);
+      } catch (e) {
+        question.value.judgeConfig = {} as any;
+      }
+    }
+    // judgeConfig 为空时兜底为空对象，避免模板访问 timeLimit 报错
+    if (!question.value.judgeConfig) {
+      question.value.judgeConfig = {} as any;
     }
     console.log(question.value);
   } else {
@@ -598,6 +1011,8 @@ const doSubmit = async () => {
   const res = await QuestionControllerService.doQuestionSubmitUsingPost({
     ...form.value,
     questionId: question.value.id,
+    // 竞赛来源时附加 competitionId，后端据此关联竞赛提交记录
+    ...(competitionId.value ? { competitionId: competitionId.value } : {}),
   });
   if (res.code === 0) {
     message.success("提交成功");
@@ -617,6 +1032,26 @@ onMounted(() => {
 const changeCode = (value: string) => {
   form.value.code = value;
 };
+
+/**
+ * 在同一页面切换题目（如竞赛导航栏点击其他题）：customId 变化时重新加载题目
+ */
+watch(
+  () => props.customId,
+  () => {
+    loadData();
+    // 重置我的提交列表与代码
+    submitList.value = [];
+    submitTotal.value = 0;
+    submitCurrent.value = 1;
+    form.value.code = "";
+    // 重置评论列表（不同题目评论不同），允许重新加载
+    comments.value = [];
+    commentTotal.value = 0;
+    commentCurrent.value = 1;
+    commentsLoaded.value = false;
+  }
+);
 </script>
 
 <style>
@@ -624,6 +1059,37 @@ const changeCode = (value: string) => {
   width: 100%;
   /* 页面固定不滚动：视口高度减去顶部菜单栏间距（详情页底部间距已为 0） */
   height: calc(100vh - 96px);
+}
+
+/* 从竞赛进入：顶部贴紧顶部栏（BasicLayout padding-top 为 76），左侧留竞赛导航栏 */
+#viewQuestionView.with-competition {
+  height: calc(100vh - 76px);
+  /* 抵消内容区 20px 左内边距，与竞赛详情页一致贴屏幕左墙 */
+  margin-left: -20px;
+}
+
+/* 页面整体布局：竞赛导航栏 + 原左右分栏 */
+.question-view-layout {
+  display: flex;
+  gap: 24px;
+  height: 100%;
+}
+
+/* 竞赛做题页：右侧分栏区顶部留 20px 间距（border-box 计入高度），左侧导航贴顶 */
+#viewQuestionView.with-competition .question-row {
+  box-sizing: border-box;
+  padding-top: 20px;
+}
+
+/* 非竞赛来源：不显示侧栏，布局容器退化为普通块 */
+#viewQuestionView:not(.with-competition) .question-view-layout {
+  display: block;
+}
+
+/* 分栏区占满侧栏以外剩余空间，窄窗口可收缩 */
+.question-view-layout .question-row {
+  flex: 1;
+  min-width: 0;
 }
 
 .question-row {
@@ -674,6 +1140,9 @@ const changeCode = (value: string) => {
   min-height: 0;
   overflow-y: auto;
   padding: 16px;
+  /* 稳定滚动栏槽位：切换页签或内容高度变化时滚动条出现/消失，
+     题目内容与代码块宽度保持固定不跳动 */
+  scrollbar-gutter: stable;
 }
 
 /* 题目内容区：h3 小标题下方显示分隔线 */
@@ -882,6 +1351,102 @@ const changeCode = (value: string) => {
 
 #viewQuestionView .arco-space-horizontal .arco-space-item {
   margin-bottom: 0 !important;
+}
+
+/* 评论区：发评论按钮右对齐 */
+.comment-editor {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+/* 评论列表：逐条展示 */
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 单条评论：头像 + 内容区 */
+.comment-item {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border-1);
+}
+
+/* 评论头像：固定尺寸，防挤压 */
+.comment-avatar {
+  flex: 0 0 auto;
+}
+
+/* 评论内容区：占满剩余宽度 */
+.comment-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 评论标题：加粗，独占一行 */
+.comment-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  word-break: break-word;
+  margin-bottom: 4px;
+}
+
+/* 评论元信息行：用户名 + 时间，位于标题下方 */
+.comment-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* 评论用户名：加粗 */
+.comment-user {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-1);
+}
+
+/* 评论时间：灰色小字 */
+.comment-time {
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+/* 评论正文：Markdown 渲染，长内容不撑破布局 */
+.comment-content {
+  font-size: 14px;
+  color: var(--color-text-2);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* 发评论弹窗：底部按钮右对齐 */
+.comment-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* 弹窗内 Markdown 编辑器：固定高度（弹窗空间有限，取 ByteMD 默认 300px） */
+.comment-modal .bytemd {
+  height: 300px;
+}
+
+/* 评论分页：右对齐 */
+.comment-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* 评论加载中：占位高度，避免空态闪烁 */
+.comment-spin {
+  display: block;
 }
 
 /* 窗口变窄时（≤768px）堆叠两栏：题目在上、编辑器在下，恢复整页滚动 */

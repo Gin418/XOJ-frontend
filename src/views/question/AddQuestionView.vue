@@ -1,25 +1,36 @@
 <template>
   <div id="addQuestionView">
     <a-card>
-      <h2>创建题目</h2>
-      <a-form :model="form" label-align="left">
+      <h2>{{ updatePage ? "更新题目" : "创建题目" }}</h2>
+      <!-- label 右对齐：标签文字紧贴输入框，不靠卡片左墙 -->
+      <a-form :model="form" label-align="right">
         <a-form-item field="customId" label="题号">
-          <a-input v-model="form.customId" placeholder="请输入题号" />
+          <a-input
+            v-model="form.customId"
+            placeholder="请输入题号"
+            style="width: 560px"
+          />
         </a-form-item>
         <a-form-item field="title" label="标题">
-          <a-input v-model="form.title" placeholder="请输入标题" />
+          <a-input
+            v-model="form.title"
+            placeholder="请输入标题"
+            style="width: 560px"
+          />
         </a-form-item>
         <a-form-item field="tags" label="标签">
           <a-input-tag
             v-model="form.tags"
             placeholder="请选择标签"
             allow-clear
+            style="width: 560px"
           />
         </a-form-item>
-        <a-form-item field="content" label="题目内容">
+        <!-- content-flex=false：内容区改块级布局，让 Markdown 编辑器占满整行靠墙 -->
+        <a-form-item field="content" label="题目内容" :content-flex="false">
           <MdEditor :value="form.content" :handle-change="onContentChange" />
         </a-form-item>
-        <a-form-item field="description" label="题目说明">
+        <a-form-item field="description" label="题目说明" :content-flex="false">
           <MdEditor
             :value="form.description"
             :handle-change="onDescriptionChange"
@@ -281,5 +292,11 @@ const onDescriptionChange = (value: string) => {
 
 <style scoped>
 #addQuestionView {
+}
+
+/* 题目内容/说明 Markdown 编辑器：高度统一为 300px（ByteMD 默认高度），宽度 960px（与发评论弹窗标准一致） */
+#addQuestionView :deep(.bytemd) {
+  height: 300px;
+  width: 960px;
 }
 </style>

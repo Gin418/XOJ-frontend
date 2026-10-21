@@ -26,7 +26,7 @@
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="doSubmit">提交</a-button>
+            <a-button type="primary" @click="doSubmit">搜索</a-button>
             <a-button @click="doReset">重置</a-button>
           </a-space>
         </a-form-item>

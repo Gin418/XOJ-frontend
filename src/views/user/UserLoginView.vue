@@ -9,7 +9,7 @@
       @submit="handleSubmit"
     >
       <a-form-item field="userAccount" label="账号">
-        <a-input v-model="form.userAccount" placeholder="请输入账号" />
+        <a-input v-model="form.userAccount" placeholder="请输入账号/邮箱" />
       </a-form-item>
       <a-form-item field="userPassword" tooltip="密码不少于 8 位" label="密码">
         <a-input-password
@@ -25,6 +25,7 @@
           <a-link @click="router.push('/user/register')"
             >没有账号？去注册</a-link
           >
+          <a-link @click="router.push('/user/forget')">忘记密码？</a-link>
         </a-space>
       </a-form-item>
     </a-form>
