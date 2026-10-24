@@ -1,12 +1,14 @@
 import { createStore } from "vuex";
 import createPersistedState from "vuex-persistedstate";
 import user from "./user";
+import message from "./message";
 
 export default createStore({
   mutations: {},
   actions: {},
   modules: {
     user,
+    message,
   },
   plugins: [
     createPersistedState({

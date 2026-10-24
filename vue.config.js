@@ -13,6 +13,9 @@ module.exports = defineConfig({
     );
   },
   devServer: {
+    // SSE 长连接响应不能被压缩：gzip 缓冲会导致事件帧不实时推送，
+    // 且 dev 环境本地传输无需压缩，直接关闭
+    compress: false,
     proxy: {
       "/api": {
         target: "http://localhost:8101",

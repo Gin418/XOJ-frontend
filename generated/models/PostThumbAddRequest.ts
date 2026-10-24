@@ -4,5 +4,5 @@
 /* eslint-disable */
 
 export type PostThumbAddRequest = {
-    postId?: number;
+    discussionId?: number;
 };

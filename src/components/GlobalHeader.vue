@@ -34,9 +34,35 @@
         </a-menu-item>
       </a-menu>
     </a-col>
-    <a-col flex="130px">
+    <a-col flex="220px">
       <div class="user-area">
         <template v-if="isLogin">
+          <a-tooltip content="私信">
+            <a-badge :count="unreadPrivate" :max-count="99">
+              <a-button
+                type="text"
+                class="header-icon-btn"
+                @click="router.push('/chat')"
+              >
+                <template #icon>
+                  <icon-message style="color: #1d2129" />
+                </template>
+              </a-button>
+            </a-badge>
+          </a-tooltip>
+          <a-tooltip content="通知">
+            <a-badge :count="unreadNotification" :max-count="99">
+              <a-button
+                type="text"
+                class="header-icon-btn"
+                @click="router.push('/message')"
+              >
+                <template #icon>
+                  <icon-notification style="color: #1d2129" />
+                </template>
+              </a-button>
+            </a-badge>
+          </a-tooltip>
           <a-dropdown position="br" trigger="click" @select="handleSelect">
             <a-avatar
               :size="48"
@@ -65,12 +91,16 @@
 <script setup lang="ts">
 import { routes } from "../router/routes";
 import { useRoute, useRouter } from "vue-router";
-import { computed, ref, watchEffect } from "vue";
+import { computed, ref, watch, watchEffect } from "vue";
 import { useStore } from "vuex";
 import checkAccess from "@/access/checkAccess";
 import ACCESS_ENUM from "@/access/accessEnum";
 import message from "@arco-design/web-vue/es/message";
-import { IconLeft } from "@arco-design/web-vue/es/icon";
+import {
+  IconLeft,
+  IconMessage,
+  IconNotification,
+} from "@arco-design/web-vue/es/icon";
 import { getContestDetail } from "../store/contestCache";
 
 const router = useRouter();
@@ -158,6 +188,27 @@ const isLogin = computed(() => {
 });
 
 /**
+ * 顶部导航未读消息徽标：私信 / 系统通知（Number + || 0 兜底异常值）
+ */
+const unreadPrivate = computed(
+  () => Number(store.state.message?.unreadPrivate) || 0
+);
+const unreadNotification = computed(
+  () => Number(store.state.message?.unreadNotification) || 0
+);
+
+// 登录后拉取未读消息数（SSE 推送到达后实时累加）；immediate 覆盖刷新后已登录的场景
+watch(
+  isLogin,
+  (val) => {
+    if (val) {
+      store.dispatch("message/fetchUnread");
+    }
+  },
+  { immediate: true }
+);
+
+/**
  * 下拉菜单选择事件：个人资料 / 账号设置 / 退出登录
  */
 const handleSelect = (value: string) => {
@@ -235,7 +286,7 @@ const doMenuClick = (key: string) => {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 16px;
   padding-right: 16px;
 }
 
@@ -244,5 +295,18 @@ const doMenuClick = (key: string) => {
   cursor: pointer;
   flex-shrink: 0;
   background-color: #165dff;
+}
+
+/* 顶部私信/通知图标按钮：与头像同排，尺寸紧凑，图标固定黑色 */
+.header-icon-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 18px;
+  color: #1d2129;
+}
+
+.header-icon-btn:hover {
+  background-color: var(--color-fill-2);
 }
 </style>

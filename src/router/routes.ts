@@ -17,6 +17,8 @@ import ViewQuestionView from "@/views/question/ViewQuestionView.vue";
 import AddContestView from "@/views/contest/AddContestView.vue";
 import ManageContestView from "@/views/contest/ManageContestView.vue";
 import ContestDetailView from "@/views/contest/ContestDetailView.vue";
+import MessageView from "@/views/MessageView.vue";
+import ChatView from "@/views/ChatView.vue";
 
 export const routes: Array<RouteRecordRaw> = [
   {
@@ -153,6 +155,24 @@ export const routes: Array<RouteRecordRaw> = [
   //     hideInMenu: true,
   //   },
   // },
+  {
+    path: "/chat",
+    name: "私信",
+    component: ChatView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
+    },
+  },
+  {
+    path: "/message",
+    name: "消息中心",
+    component: MessageView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
+    },
+  },
   {
     path: "/noAuth",
     name: "无权限",

@@ -36,6 +36,7 @@ body {
 import BasicLayout from "@/layouts/BasicLayout.vue";
 import { onMounted, watchEffect } from "vue";
 import { useRoute } from "vue-router";
+import { initSse } from "@/plugins/sse";
 
 const route = useRoute();
 
@@ -66,6 +67,8 @@ watchEffect(() => {
  */
 const doInit = () => {
   console.log("hello 欢迎来到我的项目");
+  // 页面刷新后 token 从 localStorage 恢复，已登录则重建 SSE 长连接
+  initSse();
 };
 
 onMounted(() => {

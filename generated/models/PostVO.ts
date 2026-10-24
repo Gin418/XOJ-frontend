@@ -12,7 +12,12 @@ export type PostVO = {
     hasFavour?: boolean;
     hasThumb?: boolean;
     id?: number;
-    tagList?: Array<string>;
+    parentId?: number;
+    questionId?: number;
+    replies?: Array<PostVO>;
+    replyCount?: number;
+    replyUser?: UserVO;
+    replyUserId?: number;
     thumbNum?: number;
     title?: string;
     updateTime?: string;

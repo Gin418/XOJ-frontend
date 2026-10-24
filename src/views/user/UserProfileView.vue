@@ -6,7 +6,18 @@
           {{ profileUser.userName?.slice(0, 1) }}
         </a-avatar>
         <div>
-          <div class="user-name">{{ profileUser.userName }}</div>
+          <div class="user-name-row">
+            <div class="user-name">{{ profileUser.userName }}</div>
+            <!-- 私信：仅查看他人主页时显示（不能私信自己） -->
+            <a-button
+              v-if="!isSelf"
+              type="primary"
+              size="small"
+              @click="toChat"
+            >
+              私信
+            </a-button>
+          </div>
           <div class="user-profile">
             {{ profileUser.userProfile || "这个人很懒，什么都没有写" }}
           </div>
@@ -542,6 +553,19 @@ const isSelf = computed(() => {
   );
 });
 
+/**
+ * 私信该用户：跳转私信页并自动打开与该用户的会话
+ */
+const toChat = () => {
+  router.push({
+    path: "/chat",
+    query: {
+      friendId: targetUserId.value,
+      friendName: profileUser.value?.userName ?? "",
+    },
+  });
+};
+
 /* ------------------------------ 近期竞赛 ------------------------------ */
 
 /**
@@ -609,6 +633,12 @@ onMounted(() => {
 
 .profile-card {
   margin-bottom: 16px;
+}
+
+.user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .user-name {

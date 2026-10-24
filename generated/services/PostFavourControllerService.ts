@@ -26,7 +26,7 @@ postFavourAddRequest: PostFavourAddRequest,
 ): CancelablePromise<BaseResponse_int_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post_favour/',
+            url: '/api/question/discussion_favour/',
             body: postFavourAddRequest,
             errors: {
                 401: `Unauthorized`,
@@ -48,7 +48,7 @@ postFavourQueryRequest: PostFavourQueryRequest,
 ): CancelablePromise<BaseResponse_Page_PostVO_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post_favour/list/page',
+            url: '/api/question/discussion_favour/list/page',
             body: postFavourQueryRequest,
             errors: {
                 401: `Unauthorized`,
@@ -70,7 +70,7 @@ postQueryRequest: PostQueryRequest,
 ): CancelablePromise<BaseResponse_Page_PostVO_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post_favour/my/list/page',
+            url: '/api/question/discussion_favour/my/list/page',
             body: postQueryRequest,
             errors: {
                 401: `Unauthorized`,

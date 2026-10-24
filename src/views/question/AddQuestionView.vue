@@ -294,9 +294,8 @@ const onDescriptionChange = (value: string) => {
 #addQuestionView {
 }
 
-/* 题目内容/说明 Markdown 编辑器：高度统一为 300px（ByteMD 默认高度），宽度 960px（与发评论弹窗标准一致） */
-#addQuestionView :deep(.bytemd) {
-  height: 300px;
+/* 题目内容/说明 Markdown 编辑器：宽度 960px（与发评论弹窗标准一致），高度由 MdEditor 组件控制 */
+#addQuestionView :deep(.md-editor) {
   width: 960px;
 }
 </style>

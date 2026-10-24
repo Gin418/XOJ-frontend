@@ -30,7 +30,7 @@ postAddRequest: PostAddRequest,
 ): CancelablePromise<BaseResponse_long_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post/add',
+            url: '/api/question/discussion/add',
             body: postAddRequest,
             errors: {
                 401: `Unauthorized`,
@@ -52,7 +52,7 @@ deleteRequest: DeleteRequest,
 ): CancelablePromise<BaseResponse_boolean_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post/delete',
+            url: '/api/question/discussion/delete',
             body: deleteRequest,
             errors: {
                 401: `Unauthorized`,
@@ -74,7 +74,7 @@ postEditRequest: PostEditRequest,
 ): CancelablePromise<BaseResponse_boolean_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post/edit',
+            url: '/api/question/discussion/edit',
             body: postEditRequest,
             errors: {
                 401: `Unauthorized`,
@@ -95,7 +95,7 @@ id?: number,
 ): CancelablePromise<BaseResponse_PostVO_> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/question/post/get/vo',
+            url: '/api/question/discussion/get/vo',
             query: {
                 'id': id,
             },
@@ -119,7 +119,7 @@ postQueryRequest: PostQueryRequest,
 ): CancelablePromise<BaseResponse_Page_PostVO_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post/list/page/vo',
+            url: '/api/question/discussion/list/page/vo',
             body: postQueryRequest,
             errors: {
                 401: `Unauthorized`,
@@ -141,7 +141,7 @@ postQueryRequest: PostQueryRequest,
 ): CancelablePromise<BaseResponse_Page_PostVO_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post/my/list/page/vo',
+            url: '/api/question/discussion/my/list/page/vo',
             body: postQueryRequest,
             errors: {
                 401: `Unauthorized`,
@@ -163,7 +163,7 @@ postQueryRequest: PostQueryRequest,
 ): CancelablePromise<BaseResponse_Page_PostVO_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post/search/page/vo',
+            url: '/api/question/discussion/search/page/vo',
             body: postQueryRequest,
             errors: {
                 401: `Unauthorized`,
@@ -185,7 +185,7 @@ postUpdateRequest: PostUpdateRequest,
 ): CancelablePromise<BaseResponse_boolean_ | any> {
         return __request(OpenAPI, {
             method: 'POST',
-            url: '/api/question/post/update',
+            url: '/api/question/discussion/update',
             body: postUpdateRequest,
             errors: {
                 401: `Unauthorized`,

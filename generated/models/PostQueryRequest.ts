@@ -9,12 +9,13 @@ export type PostQueryRequest = {
     favourUserId?: number;
     id?: number;
     notId?: number;
-    orTags?: Array<string>;
     pageSize?: number;
+    parentId?: number;
+    questionId?: number;
+    root?: boolean;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
-    tags?: Array<string>;
     title?: string;
     userId?: number;
 };

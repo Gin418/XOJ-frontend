@@ -6,6 +6,6 @@
 export type PostUpdateRequest = {
     content?: string;
     id?: number;
-    tags?: Array<string>;
+    questionId?: number;
     title?: string;
 };

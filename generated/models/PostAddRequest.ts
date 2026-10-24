@@ -5,6 +5,8 @@
 
 export type PostAddRequest = {
     content?: string;
-    tags?: Array<string>;
+    parentId?: number;
+    questionId?: number;
+    replyUserId?: number;
     title?: string;
 };
