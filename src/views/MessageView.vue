@@ -4,7 +4,8 @@
       <template #extra>
         <a-button size="small" @click="markAllRead">全部已读</a-button>
       </template>
-      <a-spin :loading="loading" style="min-height: 240px">
+      <!-- a-spin 默认 inline-block 会收缩到内容宽度，需 display:block 让列表占满一行 -->
+      <a-spin :loading="loading" style="min-height: 240px; display: block">
         <a-list :bordered="false" :data="messageList">
           <template #item="{ item }">
             <div
