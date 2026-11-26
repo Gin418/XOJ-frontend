@@ -8,6 +8,8 @@ export type CompetitionSwitchUpdateRequest = {
   allowSubmitAfterEnd?: number;
   // 竞赛 id（字符串传输避免雪花 Id 精度丢失）
   id?: string;
+  // 封榜状态：0 未封榜、1 已封榜（解榜传 0）
+  isFrozen?: number;
   // 是否揭榜：0 未揭榜、1 已揭榜
   isRevealed?: number;
 };

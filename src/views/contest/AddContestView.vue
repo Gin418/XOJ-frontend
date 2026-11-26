@@ -1,144 +1,156 @@
 <template>
-  <div id="addContestView">
-    <!-- 纯白卡片：标题与表单一起包裹 -->
-    <a-card>
-      <h2 style="margin-bottom: 16px">
-        {{ updatePage ? "更新竞赛" : "创建竞赛" }}
-      </h2>
-      <!-- label 右对齐：标签文字紧贴输入框，不靠卡片左墙 -->
-      <a-form :model="form" label-align="right">
-        <a-form-item field="title" label="竞赛标题">
-          <a-input
-            v-model="form.title"
-            placeholder="请输入竞赛标题"
-            style="width: 560px"
-          />
-        </a-form-item>
-        <a-form-item field="description" label="竞赛描述">
-          <a-textarea
-            v-model="form.description"
-            placeholder="请输入竞赛描述"
-            :auto-size="{ minRows: 3, maxRows: 8 }"
-            style="width: 560px"
-          />
-        </a-form-item>
-        <a-form-item field="startTime" label="开始时间">
-          <a-date-picker
-            v-model="form.startTime"
-            show-time
-            format="YYYY-MM-DD HH:mm"
-            style="width: 320px"
-            placeholder="请选择开始时间"
-          />
-        </a-form-item>
-        <a-form-item field="endTime" label="结束时间">
-          <a-date-picker
-            v-model="form.endTime"
-            show-time
-            format="YYYY-MM-DD HH:mm"
-            style="width: 320px"
-            placeholder="请选择结束时间"
-          />
-        </a-form-item>
-        <a-form-item field="freezeTime" label="封榜时间">
-          <a-date-picker
-            v-model="form.freezeTime"
-            show-time
-            format="YYYY-MM-DD HH:mm"
-            style="width: 320px"
-            placeholder="请选择封榜时间"
-          />
-        </a-form-item>
-        <a-form-item label="竞赛题目">
-          <div style="width: 100%; max-width: 560px">
-            <a-button style="margin-bottom: 12px" @click="openModal">
-              添加题目
+  <div class="page-container">
+    <div id="addContestView">
+      <!-- 纯白卡片：标题与表单一起包裹 -->
+      <a-card>
+        <h2 style="margin-bottom: 16px">
+          {{ updatePage ? "更新竞赛" : "创建竞赛" }}
+        </h2>
+        <!-- label 右对齐：标签文字紧贴输入框，不靠卡片左墙 -->
+        <a-form :model="form" label-align="right">
+          <a-form-item field="title" label="竞赛标题">
+            <a-input
+              v-model="form.title"
+              placeholder="请输入竞赛标题"
+              style="width: 560px"
+            />
+          </a-form-item>
+          <a-form-item field="description" label="竞赛描述">
+            <a-textarea
+              v-model="form.description"
+              placeholder="请输入竞赛描述"
+              :auto-size="{ minRows: 3, maxRows: 8 }"
+              style="width: 560px"
+            />
+          </a-form-item>
+          <a-form-item field="startTime" label="开始时间">
+            <a-date-picker
+              v-model="form.startTime"
+              show-time
+              format="YYYY-MM-DD HH:mm"
+              style="width: 320px"
+              placeholder="请选择开始时间"
+            />
+          </a-form-item>
+          <a-form-item field="endTime" label="结束时间">
+            <a-date-picker
+              v-model="form.endTime"
+              show-time
+              format="YYYY-MM-DD HH:mm"
+              style="width: 320px"
+              placeholder="请选择结束时间"
+            />
+          </a-form-item>
+          <a-form-item field="freezeTime" label="封榜时间">
+            <a-date-picker
+              v-model="form.freezeTime"
+              show-time
+              format="YYYY-MM-DD HH:mm"
+              style="width: 320px"
+              placeholder="请选择封榜时间"
+            />
+          </a-form-item>
+          <a-form-item field="ruleType" label="规则类型">
+            <a-select
+              v-model="form.ruleType"
+              placeholder="请选择规则类型"
+              style="width: 320px"
+            >
+              <a-option value="ACM">ACM</a-option>
+              <a-option value="OI">OI</a-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="竞赛题目">
+            <div style="width: 100%; max-width: 560px">
+              <a-button style="margin-bottom: 12px" @click="openModal">
+                添加题目
+              </a-button>
+              <a-table
+                v-if="form.questions.length"
+                :columns="selectedColumns"
+                :data="form.questions"
+                :pagination="false"
+                row-key="id"
+              >
+                <template #customId="{ record }">
+                  <b>{{ record.customId }}</b
+                  ><template v-if="record.title">.{{ record.title }}</template>
+                </template>
+                <template #action="{ record }">
+                  <a-button
+                    type="text"
+                    status="danger"
+                    @click="removeQuestion(record)"
+                  >
+                    移除
+                  </a-button>
+                </template>
+              </a-table>
+              <a-empty v-else description="尚未添加题目" />
+            </div>
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" style="min-width: 200px" @click="doSubmit">
+              提交
             </a-button>
-            <a-table
-              v-if="form.questions.length"
-              :columns="selectedColumns"
-              :data="form.questions"
-              :pagination="false"
-              row-key="id"
-            >
-              <template #customId="{ record }">
-                <b>{{ record.customId }}</b
-                ><template v-if="record.title">.{{ record.title }}</template>
-              </template>
-              <template #action="{ record }">
-                <a-button
-                  type="text"
-                  status="danger"
-                  @click="removeQuestion(record)"
-                >
-                  移除
-                </a-button>
-              </template>
-            </a-table>
-            <a-empty v-else description="尚未添加题目" />
-          </div>
-        </a-form-item>
-        <a-form-item>
-          <a-button type="primary" style="min-width: 200px" @click="doSubmit">
-            提交
-          </a-button>
-        </a-form-item>
-      </a-form>
-    </a-card>
+          </a-form-item>
+        </a-form>
+      </a-card>
 
-    <!-- 添加题目弹窗：搜索并勾选要加入竞赛的题目 -->
-    <a-modal
-      v-model:visible="modalVisible"
-      title="添加题目"
-      :width="800"
-      ok-text="确认添加"
-      @ok="confirmSelect"
-      @cancel="cancelSelect"
-    >
-      <a-form layout="inline" style="margin-bottom: 16px">
-        <a-form-item>
-          <a-input
-            v-model="searchKeyword"
-            placeholder="请输入题目名称"
-            style="width: 240px"
-            @press-enter="loadQuestionList"
-          />
-        </a-form-item>
-        <a-form-item>
-          <a-button type="primary" @click="loadQuestionList">搜索</a-button>
-        </a-form-item>
-      </a-form>
-      <a-table
-        :columns="questionColumns"
-        :data="questionList"
-        :pagination="{
-          showTotal: true,
-          pageSize: 10,
-          current: questionCurrent,
-          total: questionTotal,
-        }"
-        row-key="id"
-        :row-selection="{ type: 'checkbox' }"
-        v-model:selectedKeys="selectedKeys"
-        @page-change="onQuestionPageChange"
+      <!-- 添加题目弹窗：搜索并勾选要加入竞赛的题目 -->
+      <a-modal
+        v-model:visible="modalVisible"
+        title="添加题目"
+        :width="800"
+        ok-text="确认添加"
+        @ok="confirmSelect"
+        @cancel="cancelSelect"
       >
-        <template #customId="{ record }">
-          <b>{{ record.customId }}</b
-          >.{{ record.title }}
-        </template>
-        <template #tags="{ record }">
-          <a-space wrap>
-            <a-tag
-              v-for="(tag, index) of record.tags"
-              :key="index"
-              color="green"
-            >
-              {{ tag }}
-            </a-tag>
-          </a-space>
-        </template>
-      </a-table>
-    </a-modal>
+        <a-form layout="inline" style="margin-bottom: 16px">
+          <a-form-item>
+            <a-input
+              v-model="searchKeyword"
+              placeholder="请输入题目名称"
+              style="width: 240px"
+              @press-enter="loadQuestionList"
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" @click="loadQuestionList">搜索</a-button>
+          </a-form-item>
+        </a-form>
+        <a-table
+          :columns="questionColumns"
+          :data="questionList"
+          :pagination="{
+            showTotal: true,
+            pageSize: 10,
+            current: questionCurrent,
+            total: questionTotal,
+          }"
+          row-key="id"
+          :row-selection="{ type: 'checkbox' }"
+          v-model:selectedKeys="selectedKeys"
+          @page-change="onQuestionPageChange"
+        >
+          <template #customId="{ record }">
+            <b>{{ record.customId }}</b
+            >.{{ record.title }}
+          </template>
+          <template #tags="{ record }">
+            <a-space wrap>
+              <a-tag
+                v-for="(tag, index) of record.tags"
+                :key="index"
+                color="green"
+              >
+                {{ tag }}
+              </a-tag>
+            </a-space>
+          </template>
+        </a-table>
+      </a-modal>
+    </div>
   </div>
 </template>
 
@@ -173,6 +185,8 @@ const form = ref({
   startTime: "",
   endTime: "",
   freezeTime: "",
+  // 竞赛规则类型：ACM / OI（默认 ACM）
+  ruleType: "ACM",
   questions: [] as SelectedQuestion[],
 });
 
@@ -195,6 +209,8 @@ const loadData = async () => {
     form.value.startTime = normalizeTime(data?.startTime ?? "");
     form.value.endTime = normalizeTime(data?.endTime ?? "");
     form.value.freezeTime = normalizeTime(data?.freezeTime ?? "");
+    // 规则类型回显（字段未在 generated 模型中定义，通过 as any 读取）
+    form.value.ruleType = (data as any)?.ruleType ?? "ACM";
     // 回显竞赛题目：一次性获取竞赛关联的题目列表
     const questionsRes =
       await ContestControllerService.getSimpleQuestionsUsingGet(String(id));
@@ -369,6 +385,8 @@ const doSubmit = async () => {
       startTime: normalizeTime(form.value.startTime),
       endTime: normalizeTime(form.value.endTime),
       freezeTime: normalizeTime(form.value.freezeTime),
+      // 规则类型（字段未在 generated 模型中定义，通过 as any 提交）
+      ...({ ruleType: form.value.ruleType } as any),
     };
     // 更新模式带上竞赛 id（字符串传输避免雪花 Id 精度丢失）
     if (updatePage) {
@@ -389,6 +407,7 @@ const doSubmit = async () => {
       form.value.startTime = "";
       form.value.endTime = "";
       form.value.freezeTime = "";
+      form.value.ruleType = "ACM";
       form.value.questions = [];
     } else {
       message.error(

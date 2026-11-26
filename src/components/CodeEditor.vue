@@ -30,6 +30,8 @@ interface Props {
   readOnly?: boolean;
   theme?: string;
   fontSize?: number;
+  // 是否显示右侧代码缩略图（minimap）：弹窗查看代码等场景传 false 关闭
+  minimap?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
   readOnly: () => false,
   theme: () => "vs-dark",
   fontSize: () => 16,
+  minimap: () => true,
 });
 
 const codeEditorRef = ref();
@@ -113,11 +116,21 @@ onMounted(() => {
       // 不手动监听窗口 resize 与 layout（参考项目原版实现，窗口缩放不卡）
       automaticLayout: true,
       colorDecorators: true,
-      minimap: {
-        enabled: true,
-      },
       readOnly: props.readOnly,
       theme: props.theme,
+      minimap: {
+        enabled: props.minimap,
+      },
+      // 关闭 minimap 时同时隐藏右侧概览标尺，避免编辑器右侧出现多余卡槽
+      overviewRulerLanes: props.minimap ? 3 : 0,
+      // 滚动条窄化，弹窗查看代码时右侧不再有宽大的滚动条槽
+      scrollbar: {
+        vertical: "auto",
+        horizontal: "auto",
+        useShadows: false,
+        verticalScrollbarSize: props.minimap ? 14 : 8,
+        horizontalScrollbarSize: 8,
+      },
       // lineNumbers: "off",
       // roundedSelection: false,
       // scrollBeyondLastLine: false,

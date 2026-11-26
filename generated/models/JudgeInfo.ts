@@ -7,4 +7,5 @@ export type JudgeInfo = {
     memory?: number;
     message?: string;
     time?: number;
+    totalTestCaseCount?: number;
 };

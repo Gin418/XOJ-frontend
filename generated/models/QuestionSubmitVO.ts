@@ -3,12 +3,14 @@
 /* tslint:disable */
 /* eslint-disable */
 
+import type { JudgeCaseResult } from './JudgeCaseResult';
 import type { JudgeInfo } from './JudgeInfo';
 import type { LanguageVO } from './LanguageVO';
 import type { QuestionVO } from './QuestionVO';
 import type { UserVO } from './UserVO';
 
 export type QuestionSubmitVO = {
+    caseResults?: Array<JudgeCaseResult>;
     code?: string;
     createTime?: string;
     customId?: string;

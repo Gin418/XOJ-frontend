@@ -22,8 +22,11 @@
                   {{ contest?.competitionTitle }}
                 </div>
                 <div class="contest-header-actions">
-                  <!-- 开启赛后提交：仅管理员可见，开启后竞赛结束仍可提交 -->
-                  <a-button v-if="isAdmin" @click="doAllowSubmitAfterEnd">
+                  <!-- 开启赛后提交：仅管理员可见且未开启时展示，开启后竞赛结束仍可提交 -->
+                  <a-button
+                    v-if="canAllowSubmitAfterEnd"
+                    @click="doAllowSubmitAfterEnd"
+                  >
                     开启赛后提交
                   </a-button>
                   <!-- 未参加且竞赛未结束时展示参加入口，参加后隐藏 -->
@@ -185,8 +188,16 @@
                   placeholder="选择测评结果"
                   allow-clear
                 >
-                  <a-option v-for="s in submitStatusList" :key="s" :value="s">
-                    {{ submitStatusTextMap[s] }}
+                  <!-- 已选值按测评结果显示对应颜色 -->
+                  <template #label="{ data }">
+                    <span :style="getJudgeStatusTextStyle(data?.value)">
+                      {{ getJudgeStatusText(data?.value) }}
+                    </span>
+                  </template>
+                  <a-option v-for="s in JUDGE_STATUS_LIST" :key="s" :value="s">
+                    <span :style="getJudgeStatusTextStyle(s)">
+                      {{ getJudgeStatusText(s) }}
+                    </span>
                   </a-option>
                 </a-select>
               </a-form-item>
@@ -230,12 +241,12 @@
                   </span>
                 </template>
                 <template #judgeInfo="{ record }">
-                  <a-tag :color="getSubmitStatusColor(record.status)">
+                  <a-tag :color="getJudgeStatusColor(record.status)">
                     <span
                       class="judge-info-link"
                       @click="openCodeModal(record)"
                     >
-                      {{ submitStatusTextMap[record.status] ?? record.status }}
+                      {{ getJudgeStatusText(record.status) }}
                     </span>
                   </a-tag>
                 </template>
@@ -286,13 +297,13 @@
                   <span class="rank-official-label">正式榜单</span>
                   <a-switch
                     v-model="officialRankSwitchValue"
-                    :disabled="isContestActive"
+                    :disabled="!canSwitchRank"
                     @change="onOfficialRankChange"
                   />
                 </div>
                 <a-space>
                   <a-button @click="doRefresh">刷新</a-button>
-                  <a-button v-if="isAdmin" type="primary" @click="doReveal">
+                  <a-button v-if="canReveal" type="primary" @click="doReveal">
                     解榜
                   </a-button>
                 </a-space>
@@ -438,76 +449,13 @@
       </div>
     </div>
 
-    <!-- 查看提交代码弹窗 -->
-    <a-modal
-      v-model:visible="codeModalVisible"
-      :title="codeModalTitle"
-      :footer="false"
-      :width="720"
-    >
-      <div v-if="codeModalVisible" class="code-modal">
-        <!-- 弹窗顶部：测评结果 + 提交时间 -->
-        <div class="code-modal-header">
-          <span>测评结果：</span>
-          <a-tag :color="getSubmitStatusColor(currentStatus)">
-            {{ currentStatusText }}
-          </a-tag>
-          <span class="header-gap">提交时间：</span>
-          <span>{{ currentCreateTime }}</span>
-        </div>
-        <a-descriptions :column="2" class="code-modal-info">
-          <a-descriptions-item label="题目">
-            <b>{{ currentQuestionCustomId }}</b
-            >.{{ currentQuestionTitle }}
-          </a-descriptions-item>
-          <a-descriptions-item label="提交用户">
-            {{ currentUserName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="语言">
-            {{ currentLanguageText }}
-          </a-descriptions-item>
-          <a-descriptions-item label="代码大小">
-            {{ currentCodeSize }}
-          </a-descriptions-item>
-          <a-descriptions-item label="运行时间">
-            {{ currentTime }} ms
-          </a-descriptions-item>
-          <a-descriptions-item label="运行内存">
-            {{ currentMemory }}
-          </a-descriptions-item>
-        </a-descriptions>
-        <div class="code-panel">
-          <div class="code-panel-header">
-            <span class="code-panel-title">&lt;/&gt; 源代码</span>
-            <a-button v-if="currentCode" size="small" @click="copyCode">
-              <template #icon>
-                <icon-copy />
-              </template>
-              复制代码
-            </a-button>
-          </div>
-          <div class="code-modal-editor">
-            <CodeEditor
-              v-if="currentCode"
-              :value="currentCode"
-              :language="currentLanguage"
-              :handle-change="() => {}"
-              :read-only="true"
-              theme="vs-dark"
-            />
-            <div v-else class="code-empty-tip">
-              <icon-lock class="code-empty-icon" />
-              <span>暂无代码</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </a-modal>
+    <!-- 查看提交代码弹窗：公共组件，展示提交详情、测试点与源代码 -->
+    <JudgeResultModal ref="judgeResultModalRef" :language-list="languageList" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch, watchEffect } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   ContestControllerService,
@@ -530,8 +478,14 @@ import { useStore } from "vuex";
 import ACCESS_ENUM from "../../access/accessEnum";
 import moment from "moment";
 import CompetitionSideNav from "../../components/CompetitionSideNav.vue";
-import CodeEditor from "@/components/CodeEditor.vue";
-import { IconCopy, IconLock } from "@arco-design/web-vue/es/icon";
+import JudgeResultModal from "@/components/JudgeResultModal.vue";
+import { onSubmitStatus } from "@/plugins/sse";
+import {
+  getJudgeStatusColor,
+  getJudgeStatusText,
+  getJudgeStatusTextStyle,
+  JUDGE_STATUS_LIST,
+} from "@/constants/judgeStatus";
 
 const route = useRoute();
 const router = useRouter();
@@ -819,32 +773,6 @@ const loadSimpleQuestions = async () => {
 /* ------------------------------ 测评页：提交记录查询 ------------------------------ */
 
 /**
- * 测评结果中文映射（与后端枚举字符串一致）
- */
-const submitStatusTextMap: Record<string, string> = {
-  Compiling: "编译中",
-  Waiting_Judge: "等待判题",
-  Judging: "判题中",
-  Accepted: "答案正确",
-  Wrong_Answer: "答案错误",
-  Compile_Error: "编译错误",
-  Memory_Limit_Exceeded: "内存溢出",
-  Time_Limit_Exceeded: "运行超时",
-  Signalled: "运行错误",
-  Presentation_Error: "格式错误",
-  Nonzero_Exit_Status: "非零返回",
-  Output_Limit_Exceeded: "输出溢出",
-  Internal_Error: "系统错误",
-  File_Error: "文件错误",
-  Unknown: "未知结果",
-};
-
-/**
- * 测评结果枚举列表
- */
-const submitStatusList = Object.keys(submitStatusTextMap);
-
-/**
  * 编程语言列表（从后端接口获取，用于搜索栏下拉框）
  */
 const languageList = ref<LanguageVO[]>([]);
@@ -889,58 +817,35 @@ const submitSearchParams = ref<{
 const submitList = ref([]);
 const submitTotal = ref(0);
 
+// SSE 提交状态监听器的注销函数：页面卸载时移除监听
+let offSubmitStatus: (() => void) | undefined;
+
 /* ------------------------------ 测评页：查看提交代码弹窗 ------------------------------ */
 
-const codeModalVisible = ref(false);
-const codeModalTitle = ref("");
-const currentCode = ref("");
-const currentLanguage = ref("java");
-const currentQuestionCustomId = ref("");
-const currentQuestionTitle = ref("");
-const currentUserName = ref("");
-const currentLanguageText = ref("");
-const currentTime = ref(0);
-const currentMemory = ref("");
-const currentCodeSize = ref("");
-const currentStatus = ref("");
-const currentStatusText = ref("");
-const currentCreateTime = ref("");
+const judgeResultModalRef = ref();
 
 /**
- * 点击测评结果：打开弹窗查看该次提交的代码
+ * 点击测评结果：请求竞赛提交详情接口，获取代码、判题信息与测试点结果；
+ * 非管理员查看他人提交时无代码权限，回退为列表数据（不展示代码与测试点）
  */
-const openCodeModal = (record: QuestionSubmitVO) => {
-  codeModalTitle.value = `${record.customId ?? ""}.${
-    record.questionTitle ?? ""
-  } - 提交代码`;
-  currentCode.value = record.code ?? "";
-  currentLanguage.value = record.language?.value ?? "java";
-  currentQuestionCustomId.value = record.customId ?? "";
-  currentQuestionTitle.value = record.questionTitle ?? "";
-  currentUserName.value = record.userVO?.userName ?? "";
-  currentLanguageText.value = record.language?.text ?? "";
-  currentTime.value = record.judgeInfo?.time ?? 0;
-  currentMemory.value = formatMemory(record.judgeInfo?.memory);
-  currentCodeSize.value = formatCodeSize(record.code);
-  currentStatus.value = record.status ?? "";
-  currentStatusText.value =
-    submitStatusTextMap[record.status ?? ""] ?? record.status ?? "";
-  currentCreateTime.value = moment(record.createTime).format(
-    "YYYY-MM-DD HH:mm:ss"
-  );
-  codeModalVisible.value = true;
-};
-
-/**
- * 复制当前查看的提交代码
- */
-const copyCode = async () => {
-  try {
-    await navigator.clipboard.writeText(currentCode.value);
-    message.success("代码已复制到剪贴板");
-  } catch {
-    message.error("复制失败，请手动复制");
+const openCodeModal = async (record: QuestionSubmitVO) => {
+  if (!record.id) {
+    return;
   }
+  let detail = record;
+  let showCaseResults = true;
+  const res = await ContestControllerService.getCompetitionSubmitDetailUsingGet(
+    record.id
+  );
+  if (res.code === 0 && res.data) {
+    detail = res.data;
+  } else if (res.code === 40101) {
+    showCaseResults = false;
+  } else {
+    message.error(res.message || "获取提交详情失败");
+    return;
+  }
+  judgeResultModalRef.value?.open(detail, showCaseResults);
 };
 
 /**
@@ -1046,23 +951,6 @@ const formatMemory = (memoryKB: number | undefined) => {
 };
 
 /**
- * 根据测评结果返回标签颜色：通过绿 / 判题中橙 / 其余红
- */
-const getSubmitStatusColor = (status?: string) => {
-  if (status === "Accepted") {
-    return "green";
-  }
-  if (
-    status === "Compiling" ||
-    status === "Waiting_Judge" ||
-    status === "Judging"
-  ) {
-    return "orange";
-  }
-  return "red";
-};
-
-/**
  * 测评提交记录列定义
  */
 const submitColumns = [
@@ -1138,21 +1026,27 @@ const rankTotal = ref(0);
 
 /**
  * 是否查看正式榜单（用户偏好，默认关闭即实时榜单）：
- * 竞赛未结束时强制查看正式榜单（只统计比赛期间提交），开关禁用；
- * 竞赛结束后可切换：开启=正式榜单（realTime=false），关闭=实时榜单含赛后提交（realTime=true）
+ * 竞赛未结束或未解榜时强制查看正式榜单（只统计比赛期间提交），开关禁用；
+ * 竞赛结束且已解榜后可切换：开启=正式榜单（realTime=false），关闭=实时榜单含赛后提交（realTime=true）
  */
 const showOfficialRank = ref(false);
 
 /**
- * 竞赛是否未结束：未结束（待开始/进行中）时只能查看正式榜单
+ * 竞赛是否可切换榜单：仅竞赛已结束（END）且已解榜（isFrozen=0）时启用开关；
+ * 未结束或未解榜时强制开启正式榜单且不可切换
+ * （isFrozen 未在 generated 模型中定义，通过 as any 读取）
  */
-const isContestActive = computed(() => contest.value?.status !== "END");
+const canSwitchRank = computed(
+  () =>
+    contest.value?.status === "END" &&
+    Number((contest.value as any)?.isFrozen ?? 1) === 0
+);
 
 /**
- * 开关显示值：竞赛未结束时强制开启（正式榜单）且不可切换；结束后跟随用户偏好
+ * 开关显示值：不可切换时强制开启（正式榜单）；可切换时跟随用户偏好
  */
 const officialRankSwitchValue = computed({
-  get: () => isContestActive.value || showOfficialRank.value,
+  get: () => !canSwitchRank.value || showOfficialRank.value,
   set: (value: boolean) => {
     showOfficialRank.value = value;
   },
@@ -1211,7 +1105,7 @@ const loadRankTop10 = async () => {
 
 /**
  * 加载竞赛排名：请求 /api/competition/rank/{competitionId}（POST），按分页参数查询；
- * 竞赛未结束时强制正式榜单（realTime=false），结束后按开关偏好：
+ * 不可切换时强制正式榜单（realTime=false），可切换时按开关偏好：
  * 正式榜单 realTime=false（只看比赛期间提交）、实时榜单 realTime=true（含赛后提交）
  */
 const loadRank = async () => {
@@ -1220,7 +1114,7 @@ const loadRank = async () => {
     {
       current: rankSearchParams.value.current,
       pageSize: rankSearchParams.value.pageSize,
-      realTime: isContestActive.value ? false : !showOfficialRank.value,
+      realTime: !canSwitchRank.value ? false : !showOfficialRank.value,
     }
   );
   if (res.code === 0) {
@@ -1261,6 +1155,26 @@ const isAdmin = computed(
 );
 
 /**
+ * 是否显示解榜按钮：管理员且仍处于封榜状态（isFrozen 不为 0）时可解榜；
+ * 已解榜（isFrozen=0）后解榜不可逆，隐藏按钮
+ * （isFrozen 未在 generated 模型中定义，通过 as any 读取）
+ */
+const canReveal = computed(
+  () => isAdmin.value && Number((contest.value as any)?.isFrozen ?? 1) !== 0
+);
+
+/**
+ * 是否显示开启赛后提交按钮：管理员且未开启（allowSubmitAfterEnd 不为 1）时显示；
+ * 已开启后隐藏按钮
+ * （allowSubmitAfterEnd 未在 generated 模型中定义，通过 as any 读取）
+ */
+const canAllowSubmitAfterEnd = computed(
+  () =>
+    isAdmin.value &&
+    Number((contest.value as any)?.allowSubmitAfterEnd ?? 0) !== 1
+);
+
+/**
  * 刷新排名：重新加载排名列表与题目统计
  */
 const doRefresh = () => {
@@ -1269,7 +1183,7 @@ const doRefresh = () => {
 };
 
 /**
- * 解榜（仅管理员）：揭榜后封榜期间的提交并入排名统计，成功后刷新排名
+ * 解榜（仅管理员）：解除封榜后封榜期间的提交并入排名统计，成功后刷新排名
  */
 const doReveal = () => {
   Modal.confirm({
@@ -1281,10 +1195,13 @@ const doReveal = () => {
       const res =
         await ContestControllerService.updateCompetitionSwitchUsingPost({
           id: competitionId,
-          isRevealed: 1,
+          isFrozen: 0,
         });
       if (res.code === 0) {
         message.success("解榜成功");
+        // 解榜后 isFrozen 已变为 0：先强制重新加载竞赛详情，
+        // 让榜单切换开关（canSwitchRank）生效，再刷新榜单
+        await loadData(true);
         doRefresh();
       } else {
         message.error("解榜失败，" + res.message);
@@ -1480,6 +1397,25 @@ onMounted(async () => {
   if (activeKey.value === "preview") {
     loadRankTop10();
   }
+  // 注册 SSE 提交状态监听：收到 submit-status 推送时更新列表中对应记录的状态
+  offSubmitStatus = onSubmitStatus(({ submitId, status }) => {
+    const row = submitList.value.find(
+      (item) => String(item.id) === String(submitId)
+    );
+    if (row) {
+      row.status = status;
+    } else {
+      // 列表中没有该记录（提交后列表未刷新）：重新加载列表让新记录出现
+      loadSubmitList();
+    }
+  });
+});
+
+/**
+ * 页面卸载时，移除 SSE 提交状态监听
+ */
+onUnmounted(() => {
+  offSubmitStatus?.();
 });
 
 /**
@@ -1518,30 +1454,27 @@ watch(
 
 <style scoped>
 #contestDetailView {
-  /* 靠左对齐，抵消内容区 20px 左内边距让导航栏贴屏幕左墙；宽度拉满；
+  /* 靠左对齐：导航栏贴屏幕左墙；宽度拉满；
      高度填满顶部栏以下视口（BasicLayout 竞赛详情页 padding-top 为 76px），页面不出现滚动条 */
   width: 100%;
   height: calc(100vh - 76px);
   margin: 0;
-  margin-left: -20px;
   overflow: hidden;
 }
 
-/* 左右布局：左侧导航 + 右侧内容 */
+/* 左右布局：左侧导航 + 右侧内容（两者中间不设布局间距） */
 .detail-layout {
   display: flex;
-  gap: 24px;
   height: 100%;
 }
 
-/* 内容区：顶部与底部各留 20px 间距（border-box 计入高度），其余占满，内部滚动 */
+/* 内容区：四周各留 20px 内边距，内部滚动 */
 .detail-main {
   flex: 1;
   min-width: 0;
   height: 100%;
   box-sizing: border-box;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding: 20px;
   overflow-y: auto;
 }
 
@@ -1799,69 +1732,6 @@ watch(
 .judge-info-link {
   cursor: pointer;
   font-size: 15px;
-}
-
-/* 代码面板：头部栏 + 编辑器 */
-.code-panel {
-  border: 1px solid var(--color-border-2);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.code-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--color-fill-1);
-  border-bottom: 1px solid var(--color-border-2);
-}
-
-.code-panel-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-1);
-}
-
-/* 弹窗内只读代码编辑器：固定高度 */
-.code-modal-editor {
-  height: 400px;
-}
-
-/* 无代码时的提示：锁图标 + 文案，垂直居中 */
-.code-empty-tip {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--color-text-3);
-}
-
-.code-empty-icon {
-  font-size: 28px;
-  color: var(--color-text-3);
-}
-
-/* 弹窗顶部：测评结果 + 提交时间 */
-.code-modal-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: var(--color-text-2);
-}
-
-.code-modal-header .header-gap {
-  margin-left: 16px;
-}
-
-/* 弹窗内字段信息与编辑器间距 */
-.code-modal-info {
-  margin-bottom: 12px;
 }
 
 /* 排名页：占满内容区高度，表格在内部滚动 */

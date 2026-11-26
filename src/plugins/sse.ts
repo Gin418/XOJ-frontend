@@ -1,6 +1,4 @@
 // 用户登录后建立 SSE 长连接，实时接收消息推送；
-// 多窗口共享一条连接：同源窗口间通过 Web Locks 选举唯一连接窗口（leader），
-// leader 收到事件后经 BroadcastChannel 广播给其他窗口，leader 窗口关闭后其余窗口自动接管；
 // 连接失败后每隔 3 秒自动重试，退出登录时主动断开
 import store from "@/store";
 import Notification from "@arco-design/web-vue/es/notification";
@@ -30,41 +28,50 @@ interface SseMessage {
   createTime?: string;
 }
 
+/**
+ * submit-status 推送的消息体：提交记录 id 与最新测评状态
+ */
+interface SubmitStatusMessage {
+  /** 提交记录 id（后端推送字段名为 submitId，部分实现为 id，两者兼容） */
+  submitId?: number | string;
+  /** 提交记录 id（兼容字段名） */
+  id?: number | string;
+  /** 最新测评状态 */
+  status?: string;
+}
+
 // SSE 连接地址
 const SSE_CONNECT_URL = "/api/user/sse/connect";
 
 // 连接失败后的重试间隔（毫秒）
 const RETRY_INTERVAL = 3000;
 
-// 多窗口连接选举锁名：同一浏览器中仅持锁窗口负责建立 SSE 连接
-const SSE_LOCK_NAME = "sse-connection";
-
-// 同源窗口广播通道名：leader 窗口将收到的事件转发给其他窗口
-const SSE_CHANNEL_NAME = "sse-share";
+// // 连接锁名：同一浏览器中只有最新刷新/打开的窗口持有 SSE 连接
+// const SSE_LOCK_NAME = "sse-connection";
 
 let abortController: AbortController | null = null;
 let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-// 排队等锁的控制器：退出登录时终止排队
-let acquireController: AbortController | null = null;
-
-// 释放连接锁：leader 窗口持锁期间保持 pending，退出登录时 resolve 释放
-let releaseLock: (() => void) | null = null;
+// // 释放连接锁：持锁窗口持锁期间保持 pending，退出登录时 resolve 释放
+// let releaseLock: (() => void) | null = null;
+//
+// // 本窗口是否已发起连接锁争夺（含已持锁）：防止 initSse 与 token watch 重复触发
+// let acquired = false;
 
 // 主动断开标记：退出登录后不再自动重试
 let closedByHand = false;
 
-// 同源窗口广播通道：非 leader 窗口通过它接收事件（不支持时降级为仅本窗口处理）
-const channel: BroadcastChannel | null =
-  typeof BroadcastChannel === "undefined"
-    ? null
-    : new BroadcastChannel(SSE_CHANNEL_NAME);
-
-// 接收 leader 窗口广播的事件
-channel?.addEventListener("message", (event: MessageEvent) => {
-  const { eventName, data } = event.data;
-  handleEvent(eventName, data);
-});
+// // 同源窗口广播通道：非 leader 窗口通过它接收事件（不支持时降级为仅本窗口处理）
+// const channel: BroadcastChannel | null =
+//   typeof BroadcastChannel === "undefined"
+//     ? null
+//     : new BroadcastChannel(SSE_CHANNEL_NAME);
+//
+// // 接收 leader 窗口广播的事件
+// channel?.addEventListener("message", (event: MessageEvent) => {
+//   const { eventName, data } = event.data;
+//   handleEvent(eventName, data);
+// });
 
 // 已弹窗消息 id 去重集合：防止重连或广播边界下同一消息重复弹窗
 const shownMessageIds = new Set<string>();
@@ -126,15 +133,63 @@ const handleEvent = (eventName: string, data: string) => {
   } else if (eventName === "message") {
     // 服务端推送的消息（私信 / 系统通知）：弹窗提示
     showMessagePopup(data);
+  } else if (eventName === "submit-status") {
+    // 提交测评状态推送：通知页面更新对应提交记录的状态
+    handleSubmitStatus(data);
   }
 };
 
+// 提交状态监听器集合：页面注册后，收到 submit-status 推送时通知更新列表
+const submitStatusListeners = new Set<(message: SubmitStatusMessage) => void>();
+
 /**
- * 分发一条事件：本窗口处理，并广播给同源其他窗口（BroadcastChannel 不会发回发送者）
+ * 注册提交状态监听器：页面在 onMounted 注册、onUnmounted 调用返回的注销函数移除；
+ * 收到 submit-status 推送时按 submitId 匹配更新对应提交记录的状态
+ */
+export const onSubmitStatus = (
+  listener: (message: SubmitStatusMessage) => void
+) => {
+  submitStatusListeners.add(listener);
+  return () => {
+    submitStatusListeners.delete(listener);
+  };
+};
+
+/**
+ * 处理 submit-status 推送：解析后分发给已注册监听器的页面
+ */
+const handleSubmitStatus = (data: string) => {
+  let message: SubmitStatusMessage;
+  try {
+    message = JSON.parse(data) as SubmitStatusMessage;
+  } catch {
+    console.warn("SSE submit-status 消息解析失败：", data);
+    return;
+  }
+  // 兼容 submitId 与 id 两种字段名；
+  // 后端 Long 以数字形式推送（如 {"submitId":2118352752467369985}），JSON.parse 会丢失大整数精度，
+  // 而列表接口返回的 id 是精确字符串，两者直接比对永远匹配不上；优先从原始文本提取数字原文
+  let submitId = message.submitId ?? message.id;
+  const rawIdMatch = data.match(/"(?:submitId|id)"\s*:\s*"?(\d+)"?/);
+  if (rawIdMatch) {
+    submitId = rawIdMatch[1];
+  }
+  if (submitId == null || !message.status) {
+    return;
+  }
+  console.log("SSE 收到 submit-status 消息：", message);
+  submitStatusListeners.forEach((listener) =>
+    listener({ submitId, status: message.status })
+  );
+};
+
+/**
+ * 分发一条事件：本窗口直接处理（每个窗口各自建立连接，不再跨窗口广播）
  */
 const dispatchEvent = (eventName: string, data: string) => {
   handleEvent(eventName, data);
-  channel?.postMessage({ eventName, data });
+  // // 广播给同源其他窗口（BroadcastChannel 不会发回发送者）：多窗口共享连接已关闭
+  // channel?.postMessage({ eventName, data });
 };
 
 /**
@@ -247,35 +302,55 @@ const connect = async () => {
 };
 
 /**
- * 选举连接窗口：拿到锁的窗口成为 leader 并建立连接；
- * 其他窗口排队等锁，leader 页面关闭或退出登录释放锁后自动接管
+ * 建立连接入口：每个窗口各自建立独立的 SSE 连接
+ * （抢锁逻辑已注释停用：同一浏览器多标签页时每页各自连一条）
  */
 const acquireLeadership = () => {
-  // 取消上一次排队
-  if (acquireController) {
-    acquireController.abort();
-    acquireController = null;
-  }
-  releaseLock = null;
-  // 不支持 Web Locks 时降级：每个窗口各自建立连接
-  if (!("locks" in navigator)) {
-    console.warn("SSE 浏览器不支持 Web Locks，降级为每窗口独立连接");
-    connect();
-    return;
-  }
-  acquireController = new AbortController();
-  navigator.locks
-    .request(SSE_LOCK_NAME, { signal: acquireController.signal }, () => {
-      // 成为 leader：建立连接，持锁直至退出登录主动释放
-      console.log("SSE 本窗口获得连接锁，成为 leader");
-      connect();
-      return new Promise<void>((resolve) => {
-        releaseLock = resolve;
-      });
-    })
-    .catch(() => {
-      // 排队被取消（退出登录）或获取锁失败时静默处理
-    });
+  connect();
+  // // 以下为 Web Locks steal 夺锁逻辑（已停用，保留注释备查）：
+  // // 本窗口已发起过争夺（含已持锁）：initSse 与 token watch 可能先后触发，忽略重复调用，
+  // // 否则会 steal 自己的锁并中断刚建立的连接
+  // if (acquired) {
+  //   return;
+  // }
+  // acquired = true;
+  // releaseLock = null;
+  // // 不支持 Web Locks 时降级：每个窗口各自建立连接
+  // if (!("locks" in navigator)) {
+  //   console.warn("SSE 浏览器不支持 Web Locks，降级为每窗口独立连接");
+  //   connect();
+  //   return;
+  // }
+  // // steal 与 signal 选项互斥（规范禁止同时使用），steal 模式没有排队阶段，故不传 signal
+  // navigator.locks
+  //   .request(SSE_LOCK_NAME, { steal: true }, () => {
+  //     // 获得连接锁：建立连接，持锁直至退出登录或锁被其他窗口夺走
+  //     console.log("SSE 本窗口获得连接锁，建立连接");
+  //     connect();
+  //     const holdPromise = new Promise<void>((resolve) => {
+  //       releaseLock = resolve;
+  //     });
+  //     // 锁被其他窗口（后刷新/新开的标签页）夺走时，浏览器以 AbortError
+  //     // reject 回调返回的 promise，此处断开本窗口连接且不再重试
+  //     holdPromise.catch(() => {
+  //       console.log("SSE 连接锁被其他标签页夺走，断开本窗口连接");
+  //       closedByHand = true;
+  //       clearRetryTimer();
+  //       abort();
+  //       releaseLock = null;
+  //       acquired = false;
+  //     });
+  //     return holdPromise;
+  //   })
+  //   .catch((error) => {
+  //     // 退出登录导致的静默处理
+  //     if (closedByHand) {
+  //       return;
+  //     }
+  //     // steal 不受支持（老版本浏览器）时降级为独立连接
+  //     console.warn("SSE 抢锁失败，降级为独立连接：", (error as Error)?.message);
+  //     connect();
+  //   });
 };
 
 /**
@@ -299,26 +374,21 @@ const clearRetryTimer = () => {
 };
 
 /**
- * 主动断开 SSE 连接：中断连接并释放锁/取消排队
+ * 主动断开 SSE 连接
  */
 const close = () => {
   closedByHand = true;
   clearRetryTimer();
   abort();
-  // 取消排队等锁
-  if (acquireController) {
-    acquireController.abort();
-    acquireController = null;
-  }
-  // leader 释放连接锁，其他窗口接管连接
-  if (releaseLock) {
-    releaseLock();
-    releaseLock = null;
-  }
+  // // 主动释放连接锁，其他窗口可立即接管连接
+  // if (releaseLock) {
+  //   releaseLock();
+  //   releaseLock = null;
+  // }
 };
 
 /**
- * 启动：登录态有效时参与连接窗口选举
+ * 启动：登录态有效时建立连接（每窗口独立连接）
  */
 const start = () => {
   if (!store.state.user?.token) {

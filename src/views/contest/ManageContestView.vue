@@ -1,121 +1,129 @@
 <template>
-  <div id="manageContestView">
-    <a-row :gutter="20">
-      <a-col :style="{ flex: '1 1 0%', minWidth: 0 }">
-        <!-- 搜索栏：滚动时固定在顶部菜单栏下方 -->
-        <a-card class="search-bar-card">
-          <a-form :model="searchParams" layout="inline">
-            <a-form-item field="competitionTitle" style="min-width: 240px">
-              <a-input
-                v-model="searchParams.competitionTitle"
-                placeholder="请输入竞赛名称"
-              />
-            </a-form-item>
-            <a-form-item field="status">
-              <a-select
-                v-model="searchParams.status"
-                placeholder="状态"
-                :style="{ width: '150px' }"
-                allow-clear
-              >
-                <a-option
-                  v-for="option in statusOptions"
-                  :key="option.value"
-                  :value="option.value"
+  <div class="page-container">
+    <div id="manageContestView">
+      <a-row :gutter="20">
+        <a-col :style="{ flex: '1 1 0%', minWidth: 0 }">
+          <!-- 搜索栏：滚动时固定在顶部菜单栏下方 -->
+          <a-card class="search-bar-card">
+            <a-form :model="searchParams" layout="inline">
+              <a-form-item field="competitionTitle" style="min-width: 240px">
+                <a-input
+                  v-model="searchParams.competitionTitle"
+                  placeholder="请输入竞赛名称"
+                />
+              </a-form-item>
+              <a-form-item field="status">
+                <a-select
+                  v-model="searchParams.status"
+                  placeholder="状态"
+                  :style="{ width: '150px' }"
+                  allow-clear
                 >
-                  {{ option.text }}
-                </a-option>
-              </a-select>
-            </a-form-item>
-          </a-form>
-        </a-card>
+                  <a-option
+                    v-for="option in statusOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.text }}
+                  </a-option>
+                </a-select>
+              </a-form-item>
+            </a-form>
+          </a-card>
 
-        <!-- 竞赛卡片列表：标题 → 描述 → 时间，点击卡片进入详情页 -->
-        <a-card
-          v-for="competition in dataList"
-          :key="competition.id"
-          class="contest-card"
-          hoverable
-          @click="toContestDetail(competition)"
-        >
-          <div class="contest-header">
-            <div class="contest-title">
-              {{ competition.competitionTitle }}
-              <a-tag color="arcoblue" style="margin-left: 8px">
-                {{ statusTextMap[competition.status] ?? competition.status }}
-              </a-tag>
+          <!-- 竞赛卡片列表：标题 → 描述 → 时间，点击卡片进入详情页 -->
+          <a-card
+            v-for="competition in dataList"
+            :key="competition.id"
+            class="contest-card"
+            hoverable
+            @click="toContestDetail(competition)"
+          >
+            <div class="contest-header">
+              <div class="contest-title">
+                <span class="contest-title-text">
+                  {{ competition.competitionTitle }}
+                </span>
+                <a-tag color="arcoblue" style="margin-left: 8px">
+                  {{ statusTextMap[competition.status] ?? competition.status }}
+                </a-tag>
+              </div>
+              <a-space v-if="isAdmin">
+                <a-button type="primary" @click.stop="doUpdate(competition)">
+                  修改
+                </a-button>
+                <a-button status="danger" @click.stop="doDelete(competition)">
+                  删除
+                </a-button>
+              </a-space>
+              <div v-if="(competition as any).ruleType" class="contest-rule">
+                <a-tag :color="ruleTagColor(competition)">
+                  {{ (competition as any).ruleType }}
+                </a-tag>
+              </div>
+              <div class="contest-time">
+                竞赛时间：{{
+                  moment(competition.startTime).format("YYYY/MM/DD HH:mm")
+                }}
+                -
+                {{ moment(competition.endTime).format("YYYY/MM/DD HH:mm") }}
+                （时长：{{ getDurationText(competition) }}）
+              </div>
             </div>
-            <a-space v-if="isAdmin">
-              <a-button type="primary" @click.stop="doUpdate(competition)">
-                修改
-              </a-button>
-              <a-button status="danger" @click.stop="doDelete(competition)">
-                删除
-              </a-button>
-            </a-space>
-          </div>
-          <div class="contest-description">{{ competition.description }}</div>
-          <div class="contest-time">
-            竞赛时间：{{
-              moment(competition.startTime).format("YYYY/MM/DD HH:mm")
-            }}
-            -
-            {{ moment(competition.endTime).format("YYYY/MM/DD HH:mm") }}
-            （时长：{{ getDurationText(competition) }}）
-          </div>
-        </a-card>
-        <a-empty v-if="!dataList.length" />
+          </a-card>
+          <a-empty v-if="!dataList.length" />
 
-        <!-- 分页：固定每页 20 条，右下角，不包裹卡片 -->
-        <div class="pagination-wrapper">
-          <a-pagination
-            :total="total"
-            :current="searchParams.current"
-            :page-size="20"
-            show-total
-            @change="onPageChange"
-          />
-        </div>
-      </a-col>
-      <!-- 右侧：本周赛事统计（三行文本，文字靠左、数字靠右） -->
-      <a-col flex="320px" :style="{ paddingRight: 0 }">
-        <a-card title="本周赛事">
-          <div class="week-stats-list">
-            <div class="week-stats-row">
-              <span>进行中</span>
-              <span>{{ weekStats?.ongoingCount ?? 0 }}</span>
-            </div>
-            <div class="week-stats-row">
-              <span>待开始</span>
-              <span>{{ weekStats?.pendingCount ?? 0 }}</span>
-            </div>
-            <div class="week-stats-row">
-              <span>本周合计</span>
-              <span>{{ weekStats?.allCount ?? 0 }}</span>
-            </div>
+          <!-- 分页：固定每页 20 条，右下角，不包裹卡片 -->
+          <div class="pagination-wrapper">
+            <a-pagination
+              :total="total"
+              :current="searchParams.current"
+              :page-size="20"
+              show-total
+              @change="onPageChange"
+            />
           </div>
-        </a-card>
-        <!-- 我参加的竞赛：点击进入详情 -->
-        <a-card title="我参加的" class="my-competition-card">
-          <div v-if="myCompetitions.length" class="my-competition-list">
-            <div
-              v-for="item in myCompetitions"
-              :key="item.id"
-              class="my-competition-item"
-              @click="toContestDetail(item)"
-            >
-              <span class="my-competition-title">
-                {{ item.competitionTitle }}
-              </span>
-              <a-tag color="arcoblue" size="small" style="margin-left: 8px">
-                {{ statusTextMap[item.status] ?? item.status }}
-              </a-tag>
+        </a-col>
+        <!-- 右侧：本周赛事统计（三行文本，文字靠左、数字靠右） -->
+        <a-col flex="320px" :style="{ paddingRight: 0 }">
+          <a-card title="本周赛事">
+            <div class="week-stats-list">
+              <div class="week-stats-row">
+                <span>进行中</span>
+                <span>{{ weekStats?.ongoingCount ?? 0 }}</span>
+              </div>
+              <div class="week-stats-row">
+                <span>待开始</span>
+                <span>{{ weekStats?.pendingCount ?? 0 }}</span>
+              </div>
+              <div class="week-stats-row">
+                <span>本周合计</span>
+                <span>{{ weekStats?.allCount ?? 0 }}</span>
+              </div>
             </div>
-          </div>
-          <a-empty v-else />
-        </a-card>
-      </a-col>
-    </a-row>
+          </a-card>
+          <!-- 我参加的竞赛：点击进入详情 -->
+          <a-card title="我参加的" class="my-competition-card">
+            <div v-if="myCompetitions.length" class="my-competition-list">
+              <div
+                v-for="item in myCompetitions"
+                :key="item.id"
+                class="my-competition-item"
+                @click="toContestDetail(item)"
+              >
+                <span class="my-competition-title">
+                  {{ item.competitionTitle }}
+                </span>
+                <a-tag color="arcoblue" size="small" style="margin-left: 8px">
+                  {{ statusTextMap[item.status] ?? item.status }}
+                </a-tag>
+              </div>
+            </div>
+            <a-empty v-else />
+          </a-card>
+        </a-col>
+      </a-row>
+    </div>
   </div>
 </template>
 
@@ -197,6 +205,13 @@ const statusTextMap: Record<string, string> = {
   RUNNING: "进行中",
   END: "已结束",
 };
+
+/**
+ * 规则类型标签颜色：ACM 蓝色、OI 紫色
+ * （ruleType 未在 generated 模型中定义，通过 as any 读取）
+ */
+const ruleTagColor = (competition: Competition) =>
+  (competition as any).ruleType === "OI" ? "purple" : "arcoblue";
 
 /**
  * 状态筛选选项
@@ -357,17 +372,28 @@ const doUpdate = (competition: Competition) => {
   justify-content: flex-end;
 }
 
-/* 卡片头部：标题 + 状态标签在左，操作按钮在右 */
+/* 卡片头部（网格上下形式）：第一行标题 + 状态标签 | 操作按钮，第二行竞赛时间横跨整行 */
 .contest-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px 12px;
 }
 
 .contest-title {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-size: 16px;
   font-weight: 600;
   color: #1d2129;
+}
+
+/* 标题文本单行省略：溢出时截断，状态标签与操作按钮不被挤出 */
+.contest-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 竞赛描述：保留换行，自动换行 */
@@ -380,8 +406,18 @@ const doUpdate = (competition: Competition) => {
 }
 
 .contest-time {
-  margin-top: 12px;
+  /* 第三行横跨整行 */
+  grid-column: 1 / -1;
   color: #86909c;
   font-size: 13px;
+  /* 时间保持单行不换行，超出部分省略 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 规则类型标签行：标题下方第二行，横跨整行 */
+.contest-rule {
+  grid-column: 1 / -1;
 }
 </style>

@@ -1,80 +1,86 @@
 <template>
-  <div id="manageQuestionView">
-    <a-card>
-      <a-table
-        :ref="tableRef"
-        :columns="columns"
-        :data="dataList"
-        :pagination="{
-          showTotal: true,
-          showPageSize: true,
-          pageSizeOptions: [10, 20, 50, 100],
-          pageSize: searchParams.pageSize,
-          current: searchParams.current,
-          total,
-        }"
-        @page-change="onPageChange"
-        @page-size-change="onPageSizeChange"
-      >
-        <template #customId="{ record }">
-          <span>
-            <b>{{ record.customId }}</b
-            >.{{ record.title }}
-          </span>
-        </template>
-        <template #tags="{ record }">
-          <a-space wrap>
-            <a-tag
-              v-for="(tag, index) of parseTags(record)"
-              :key="index"
-              color="green"
-              >{{ tag }}
-            </a-tag>
-          </a-space>
-        </template>
-        <template #content="{ record }">
-          <a-tooltip :content="record.content">
-            <div class="text-clamp-2">{{ record.content }}</div>
-          </a-tooltip>
-        </template>
-        <template #description="{ record }">
-          <a-tooltip :content="record.description">
-            <div class="text-clamp-2">{{ record.description }}</div>
-          </a-tooltip>
-        </template>
-        <template #createTime="{ record }">
-          <span>{{
-            moment(record.createTime).format("YYYY/MM/DD HH:mm:ss")
-          }}</span>
-        </template>
-        <template #judgeConfig="{ record }">
-          <a-tooltip>
-            <div class="text-clamp-2">
-              <div
-                v-for="(line, index) in formatJudgeConfig(record)"
+  <div class="page-container">
+    <div id="manageQuestionView">
+      <a-card>
+        <a-table
+          :ref="tableRef"
+          :columns="columns"
+          :data="dataList"
+          :pagination="{
+            showTotal: true,
+            showPageSize: true,
+            pageSizeOptions: [10, 20, 50, 100],
+            pageSize: searchParams.pageSize,
+            current: searchParams.current,
+            total,
+          }"
+          @page-change="onPageChange"
+          @page-size-change="onPageSizeChange"
+        >
+          <template #customId="{ record }">
+            <span>
+              <b>{{ record.customId }}</b
+              >.{{ record.title }}
+            </span>
+          </template>
+          <template #tags="{ record }">
+            <a-space wrap>
+              <a-tag
+                v-for="(tag, index) of parseTags(record)"
                 :key="index"
-              >
-                {{ line }}
+                color="green"
+                >{{ tag }}
+              </a-tag>
+            </a-space>
+          </template>
+          <template #content="{ record }">
+            <a-tooltip :content="record.content">
+              <div class="text-clamp-2">{{ record.content }}</div>
+            </a-tooltip>
+          </template>
+          <template #description="{ record }">
+            <a-tooltip :content="record.description">
+              <div class="text-clamp-2">{{ record.description }}</div>
+            </a-tooltip>
+          </template>
+          <template #createTime="{ record }">
+            <span>{{
+              moment(record.createTime).format("YYYY/MM/DD HH:mm:ss")
+            }}</span>
+          </template>
+          <template #judgeConfig="{ record }">
+            <a-tooltip>
+              <div class="text-clamp-2">
+                <div
+                  v-for="(line, index) in formatJudgeConfig(record)"
+                  :key="index"
+                >
+                  {{ line }}
+                </div>
               </div>
-            </div>
-            <template #content>
-              <div
-                v-for="(line, index) in formatJudgeConfig(record)"
-                :key="index"
+              <template #content>
+                <div
+                  v-for="(line, index) in formatJudgeConfig(record)"
+                  :key="index"
+                >
+                  {{ line }}
+                </div>
+              </template>
+            </a-tooltip>
+          </template>
+          <template #optional="{ record }">
+            <a-space>
+              <a-button type="primary" @click="doUpdate(record)">
+                修改</a-button
               >
-                {{ line }}
-              </div>
-            </template>
-          </a-tooltip>
-        </template>
-        <template #optional="{ record }">
-          <a-space>
-            <a-button type="primary" @click="doUpdate(record)"> 修改</a-button>
-            <a-button status="danger" @click="doDelete(record)">删除</a-button>
-          </a-space>
-        </template>
-      </a-table>
-    </a-card>
+              <a-button status="danger" @click="doDelete(record)"
+                >删除</a-button
+              >
+            </a-space>
+          </template>
+        </a-table>
+      </a-card>
+    </div>
   </div>
 </template>
 

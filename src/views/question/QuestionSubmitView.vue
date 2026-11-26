@@ -1,206 +1,162 @@
 <template>
-  <div id="questionSubmitView">
-    <a-row :gutter="20">
-      <a-col :style="{ flex: '1 1 0%', minWidth: 0 }">
-        <a-card class="search-card">
-          <a-form :model="searchParams" layout="vertical">
-            <a-form-item field="customId" label="题号">
-              <a-input
-                v-model="searchParams.customId"
-                :style="{ width: '150px' }"
-                placeholder="请输入"
-              />
-            </a-form-item>
-            <a-form-item field="userName" label="用户昵称">
-              <a-input
-                v-model="searchParams.userName"
-                :style="{ width: '150px' }"
-                placeholder="请输入"
-                allow-clear
-              />
-            </a-form-item>
-            <a-form-item field="languageId" label="编程语言">
-              <a-select
-                v-model="searchParams.languageId"
-                :style="{ width: '150px' }"
-                placeholder="选择编程语言"
-                allow-clear
-              >
-                <a-option
-                  v-for="lang in languageList"
-                  :key="lang.value"
-                  :value="lang.type"
+  <div class="page-container">
+    <div id="questionSubmitView">
+      <a-row :gutter="20">
+        <a-col :style="{ flex: '1 1 0%', minWidth: 0 }">
+          <a-card class="search-card">
+            <a-form :model="searchParams" layout="vertical">
+              <a-form-item field="customId" label="题号">
+                <a-input
+                  v-model="searchParams.customId"
+                  :style="{ width: '150px' }"
+                  placeholder="请输入"
+                />
+              </a-form-item>
+              <a-form-item field="userName" label="用户昵称">
+                <a-input
+                  v-model="searchParams.userName"
+                  :style="{ width: '150px' }"
+                  placeholder="请输入"
+                  allow-clear
+                />
+              </a-form-item>
+              <a-form-item field="languageId" label="编程语言">
+                <a-select
+                  v-model="searchParams.languageId"
+                  :style="{ width: '150px' }"
+                  placeholder="选择编程语言"
+                  allow-clear
                 >
-                  {{ lang.text }}
-                </a-option>
-              </a-select>
-            </a-form-item>
-            <a-form-item field="status" label="测评结果">
-              <a-select
-                v-model="searchParams.status"
-                :style="{ width: '150px' }"
-                placeholder="选择测评结果"
-                allow-clear
-              >
-                <a-option v-for="s in statusList" :key="s" :value="s">
-                  {{ statusTextMap[s] }}
-                </a-option>
-              </a-select>
-            </a-form-item>
-            <a-form-item field="onlyMine" label="只看我的提交">
-              <a-switch v-model="searchParams.onlyMine" />
-            </a-form-item>
-            <a-form-item label=" " class="search-buttons">
-              <a-space>
-                <a-button type="primary" @click="doSubmit">搜索</a-button>
-                <a-button @click="doReset">重置</a-button>
-              </a-space>
-            </a-form-item>
-          </a-form>
-        </a-card>
-        <a-card>
-          <a-table
-            table-layout="fixed"
-            :ref="tableRef"
-            :columns="columns"
-            :data="dataList"
-            :pagination="{
-              showTotal: true,
-              showPageSize: true,
-              pageSizeOptions: [10, 20, 50, 100],
-              pageSize: searchParams.pageSize,
-              current: searchParams.current,
-              total,
-            }"
-            @page-change="onPageChange"
-            @page-size-change="onPageSizeChange"
-          >
-            <template #customId="{ record }">
-              <a-tooltip
-                :content="`${record.questionVO?.customId}.${record.questionVO?.title}`"
-              >
+                  <a-option
+                    v-for="lang in languageList"
+                    :key="lang.value"
+                    :value="lang.type"
+                  >
+                    {{ lang.text }}
+                  </a-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item field="status" label="测评结果">
+                <a-select
+                  v-model="searchParams.status"
+                  :style="{ width: '150px' }"
+                  placeholder="选择测评结果"
+                  allow-clear
+                >
+                  <!-- 已选值按测评结果显示对应颜色 -->
+                  <template #label="{ data }">
+                    <span :style="getJudgeStatusTextStyle(data?.value)">
+                      {{ getJudgeStatusText(data?.value) }}
+                    </span>
+                  </template>
+                  <a-option v-for="s in JUDGE_STATUS_LIST" :key="s" :value="s">
+                    <span :style="getJudgeStatusTextStyle(s)">
+                      {{ getJudgeStatusText(s) }}
+                    </span>
+                  </a-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item field="onlyMine" label="只看我的提交">
+                <a-switch v-model="searchParams.onlyMine" />
+              </a-form-item>
+              <a-form-item label=" " class="search-buttons">
+                <a-space>
+                  <a-button type="primary" @click="doSubmit">搜索</a-button>
+                  <a-button @click="doReset">重置</a-button>
+                </a-space>
+              </a-form-item>
+            </a-form>
+          </a-card>
+          <a-card>
+            <a-table
+              table-layout="fixed"
+              :ref="tableRef"
+              :columns="columns"
+              :data="dataList"
+              :pagination="{
+                showTotal: true,
+                showPageSize: true,
+                pageSizeOptions: [10, 20, 50, 100],
+                pageSize: searchParams.pageSize,
+                current: searchParams.current,
+                total,
+              }"
+              @page-change="onPageChange"
+              @page-size-change="onPageSizeChange"
+            >
+              <template #customId="{ record }">
+                <a-tooltip
+                  :content="`${record.questionVO?.customId}.${record.questionVO?.title}`"
+                >
+                  <span
+                    class="question-title"
+                    @click="
+                      router.push(
+                        `/view/question/${record.questionVO?.customId}`
+                      )
+                    "
+                  >
+                    <b>{{ record.questionVO?.customId }}</b
+                    >.{{ record.questionVO?.title }}
+                  </span>
+                </a-tooltip>
+              </template>
+              <template #language="{ record }">
+                <span>
+                  {{ record.language?.text ?? "" }} /
+                  {{ formatCodeSize(record.code) }}
+                </span>
+              </template>
+              <template #judgeInfo="{ record }">
+                <a-tag :color="getJudgeStatusColor(record.status)">
+                  <span class="judge-info-link" @click="openCodeModal(record)">
+                    {{ getJudgeStatusText(record.status) }}
+                  </span>
+                </a-tag>
+              </template>
+              <template #time="{ record }">
+                <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
+              </template>
+              <template #memory="{ record }">
+                <span>{{ formatMemory(record.judgeInfo?.memory) }}</span>
+              </template>
+              <template #createTime="{ record }">
+                <div class="create-time">
+                  <div>
+                    {{ moment(record.createTime).format("YYYY-MM-DD") }}
+                  </div>
+                  <div>{{ moment(record.createTime).format("HH:mm:ss") }}</div>
+                </div>
+              </template>
+              <template #userName="{ record }">
                 <span
-                  class="question-title"
+                  class="user-name-link"
                   @click="
-                    router.push(`/view/question/${record.questionVO?.customId}`)
+                    router.push(
+                      `/user/profile?userId=${
+                        record.userId ?? record.userVO?.id
+                      }`
+                    )
                   "
                 >
-                  <b>{{ record.questionVO?.customId }}</b
-                  >.{{ record.questionVO?.title }}
+                  {{ record.userVO?.userName }}
                 </span>
-              </a-tooltip>
-            </template>
-            <template #language="{ record }">
-              <span>
-                {{ record.language?.text ?? "" }} /
-                {{ formatCodeSize(record.code) }}
-              </span>
-            </template>
-            <template #judgeInfo="{ record }">
-              <a-tag :color="getStatusColor(record.status)">
-                <span class="judge-info-link" @click="openCodeModal(record)">
-                  {{ statusTextMap[record.status] ?? record.status }}
-                </span>
-              </a-tag>
-            </template>
-            <template #time="{ record }">
-              <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
-            </template>
-            <template #memory="{ record }">
-              <span>{{ formatMemory(record.judgeInfo?.memory) }}</span>
-            </template>
-            <template #createTime="{ record }">
-              <div class="create-time">
-                <div>{{ moment(record.createTime).format("YYYY-MM-DD") }}</div>
-                <div>{{ moment(record.createTime).format("HH:mm:ss") }}</div>
-              </div>
-            </template>
-            <template #userName="{ record }">
-              <span
-                class="user-name-link"
-                @click="
-                  router.push(
-                    `/user/profile?userId=${record.userId ?? record.userVO?.id}`
-                  )
-                "
-              >
-                {{ record.userVO?.userName }}
-              </span>
-            </template>
-          </a-table>
-        </a-card>
-      </a-col>
-    </a-row>
-    <!-- 查看提交代码弹窗 -->
-    <a-modal
-      v-model:visible="codeModalVisible"
-      :title="codeModalTitle"
-      :footer="false"
-      :width="720"
-    >
-      <div v-if="codeModalVisible" class="code-modal">
-        <!-- 弹窗顶部：测评结果 + 提交时间 -->
-        <div class="code-modal-header">
-          <span>测评结果：</span>
-          <a-tag :color="getStatusColor(currentStatus)">
-            {{ currentStatusText }}
-          </a-tag>
-          <span class="header-gap">提交时间：</span>
-          <span>{{ currentCreateTime }}</span>
-        </div>
-        <a-descriptions :column="2" class="code-modal-info">
-          <a-descriptions-item label="题目">
-            <b>{{ currentQuestionCustomId }}</b
-            >.{{ currentQuestionTitle }}
-          </a-descriptions-item>
-          <a-descriptions-item label="提交用户">
-            {{ currentUserName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="语言">
-            {{ currentLanguageText }}
-          </a-descriptions-item>
-          <a-descriptions-item label="代码大小">
-            {{ currentCodeSize }}
-          </a-descriptions-item>
-          <a-descriptions-item label="运行时间">
-            {{ currentTime }} ms
-          </a-descriptions-item>
-          <a-descriptions-item label="运行内存">
-            {{ currentMemory }}
-          </a-descriptions-item>
-        </a-descriptions>
-        <div class="code-panel">
-          <div class="code-panel-header">
-            <span class="code-panel-title">&lt;/&gt; 源代码</span>
-            <a-button v-if="currentCode" size="small" @click="copyCode">
-              <template #icon>
-                <icon-copy />
               </template>
-              复制代码
-            </a-button>
-          </div>
-          <div class="code-modal-editor">
-            <CodeEditor
-              v-if="currentCode"
-              :value="currentCode"
-              :language="currentLanguage"
-              :handle-change="() => {}"
-              :read-only="true"
-              theme="vs-dark"
-            />
-            <div v-else class="code-empty-tip">
-              <icon-lock class="code-empty-icon" />
-              <span>AC 本题后可查看他人代码</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </a-modal>
+            </a-table>
+          </a-card>
+        </a-col>
+      </a-row>
+      <!-- 查看提交代码弹窗：公共组件，无权限时展示解锁提示 -->
+      <JudgeResultModal
+        ref="judgeResultModalRef"
+        empty-tip="AC 本题后可查看他人代码"
+      />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watchEffect } from "vue";
+import { computed, onMounted, onUnmounted, ref, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   LanguageVO,
@@ -210,11 +166,17 @@ import {
   QuestionSubmitVO,
 } from "../../../generated";
 import message from "@arco-design/web-vue/es/message";
-import { IconCopy, IconLock } from "@arco-design/web-vue/es/icon";
 import { useStore } from "vuex";
 import ACCESS_ENUM from "@/access/accessEnum";
 import moment from "moment";
-import CodeEditor from "@/components/CodeEditor.vue";
+import JudgeResultModal from "@/components/JudgeResultModal.vue";
+import {
+  getJudgeStatusColor,
+  getJudgeStatusText,
+  getJudgeStatusTextStyle,
+  JUDGE_STATUS_LIST,
+} from "@/constants/judgeStatus";
+import { onSubmitStatus } from "@/plugins/sse";
 
 const tableRef = ref();
 
@@ -233,32 +195,6 @@ const loadLanguageList = async () => {
     // 编程语言默认不选中（空），由用户自行选择
   }
 };
-
-/**
- * 测评结果字符串中文映射（与后端枚举字符串一致）
- */
-const statusTextMap: Record<string, string> = {
-  Compiling: "编译中",
-  Waiting_Judge: "等待判题",
-  Judging: "判题中",
-  Accepted: "答案正确",
-  Wrong_Answer: "答案错误",
-  Compile_Error: "编译错误",
-  Memory_Limit_Exceeded: "内存溢出",
-  Time_Limit_Exceeded: "运行超时",
-  Signalled: "运行错误",
-  Presentation_Error: "格式错误",
-  Nonzero_Exit_Status: "非零返回",
-  Output_Limit_Exceeded: "输出溢出",
-  Internal_Error: "系统错误",
-  File_Error: "文件错误",
-  Unknown: "未知结果",
-};
-
-/**
- * 测评结果枚举列表
- */
-const statusList = Object.keys(statusTextMap);
 
 /**
  * 格式化代码大小：不足 1KB 时显示 B，否则显示 KB，0 时显示 0 B
@@ -290,6 +226,9 @@ const formatMemory = (memoryKB: number | undefined) => {
 
 const dataList = ref([]);
 const total = ref(0);
+
+// SSE 提交状态监听器的注销函数：页面卸载时移除监听
+let offSubmitStatus: (() => void) | undefined;
 
 /**
  * 从个人主页「查看全部」跳转时携带 onlyMine=1，进入页面即勾选只看我的
@@ -334,6 +273,25 @@ watchEffect(() => {
 onMounted(() => {
   // 提交列表由 watchEffect 统一触发加载，此处不重复调用 loadData
   loadLanguageList();
+  // 注册 SSE 提交状态监听：收到 submit-status 推送时更新列表中对应记录的状态
+  offSubmitStatus = onSubmitStatus(({ submitId, status }) => {
+    const row = dataList.value.find(
+      (item) => String(item.id) === String(submitId)
+    );
+    if (row) {
+      row.status = status;
+    } else {
+      // 列表中没有该记录（提交后列表未刷新）：重新加载列表让新记录出现
+      loadData();
+    }
+  });
+});
+
+/**
+ * 页面卸载时，移除 SSE 提交状态监听
+ */
+onUnmounted(() => {
+  offSubmitStatus?.();
 });
 
 /**
@@ -414,77 +372,37 @@ const onPageSizeChange = (pageSize: number) => {
 const router = useRouter();
 
 /**
- * 根据测评结果返回标签颜色
+ * 查看提交代码弹窗：请求详情接口后交由公共组件展示
  */
-const getStatusColor = (status?: string) => {
-  if (status === "Accepted") {
-    return "green";
-  }
-  if (
-    status === "Compiling" ||
-    status === "Waiting_Judge" ||
-    status === "Judging"
-  ) {
-    return "orange";
-  }
-  return "red";
-};
+const judgeResultModalRef = ref();
 
-/**
- * 复制当前查看的提交代码
- */
-const copyCode = async () => {
-  try {
-    await navigator.clipboard.writeText(currentCode.value);
-    message.success("代码已复制到剪贴板");
-  } catch {
-    message.error("复制失败，请手动复制");
-  }
-};
-
-/**
- * 查看提交代码弹窗
- */
-const codeModalVisible = ref(false);
-const codeModalTitle = ref("");
-const currentCode = ref("");
-const currentLanguage = ref("java");
-const currentQuestionCustomId = ref("");
-const currentQuestionTitle = ref("");
-const currentUserName = ref("");
-const currentLanguageText = ref("");
-const currentTime = ref(0);
-const currentMemory = ref("");
-const currentCodeSize = ref("");
-const currentStatus = ref("");
-const currentStatusText = ref("");
-const currentCreateTime = ref("");
-
-const openCodeModal = (record: QuestionSubmitVO) => {
+const openCodeModal = async (record: QuestionSubmitVO) => {
   // 未登录时查看提交代码需先登录
   if (!isLogin.value) {
     toLogin();
     return;
   }
-  codeModalTitle.value = `${record.questionVO?.customId ?? ""}.${
-    record.questionVO?.title ?? ""
-  } - 提交代码`;
-  currentCode.value = record.code ?? "";
-  currentLanguage.value = record.language?.value ?? "java";
-  currentQuestionCustomId.value = record.questionVO?.customId ?? "";
-  currentQuestionTitle.value = record.questionVO?.title ?? "";
-  currentUserName.value = record.userVO?.userName ?? "";
-  currentLanguageText.value = record.language?.text ?? "";
-  currentTime.value = record.judgeInfo?.time ?? 0;
-  currentMemory.value = formatMemory(record.judgeInfo?.memory);
-  currentCodeSize.value = formatCodeSize(record.code);
-  currentStatus.value = record.status ?? "";
-  currentStatusText.value =
-    statusTextMap[record.status ?? ""] ?? record.status ?? "";
-  currentCreateTime.value = moment(record.createTime).format(
-    "YYYY-MM-DD HH:mm:ss"
+  if (!record.id) {
+    return;
+  }
+  // 点击测评结果时请求提交详情接口，由后端校验代码查看权限
+  const res = await QuestionControllerService.getQuestionSubmitDetailUsingGet(
+    record.id
   );
-  codeModalVisible.value = true;
+  let detail = res.data;
+  // 是否展示测试点详情：无权限回退时仅展示公开信息，不展示测试点
+  let showCaseResults = true;
+  if (res.code !== 0 || !detail) {
+    // 无权限查看代码时，沿用列表中的公开信息打开弹窗，代码区展示解锁提示
+    if (res.code === 40101) {
+      detail = { ...record, code: "" };
+      showCaseResults = false;
+    } else {
+      message.error(res.message || "获取提交详情失败");
+      return;
+    }
+  }
+  judgeResultModalRef.value?.open(detail, showCaseResults);
 };
 
 /**
@@ -590,68 +508,5 @@ const toLogin = () => {
 .judge-info-link {
   cursor: pointer;
   font-size: 15px;
-}
-
-/* 代码面板：头部栏 + 编辑器 */
-.code-panel {
-  border: 1px solid var(--color-border-2);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.code-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--color-fill-1);
-  border-bottom: 1px solid var(--color-border-2);
-}
-
-.code-panel-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-1);
-}
-
-/* 弹窗内只读代码编辑器：固定高度 */
-.code-modal-editor {
-  height: 400px;
-}
-
-/* 无代码权限时的提示：锁图标 + 文案，垂直居中 */
-.code-empty-tip {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--color-text-3);
-}
-
-.code-empty-icon {
-  font-size: 28px;
-  color: var(--color-text-3);
-}
-
-/* 弹窗顶部：测评结果 + 提交时间 */
-.code-modal-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: var(--color-text-2);
-}
-
-.code-modal-header .header-gap {
-  margin-left: 16px;
-}
-
-/* 弹窗内字段信息与编辑器间距 */
-.code-modal-info {
-  margin-bottom: 12px;
 }
 </style>

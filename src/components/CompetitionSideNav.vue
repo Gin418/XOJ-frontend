@@ -199,11 +199,15 @@ const openQuestion = async (question: QuestionVO) => {
   height: 100%;
 }
 
-/* 导航面板：菜单与题目目录共用的白色容器，无圆角与顶部栏连成一体 */
+/* 导航面板：菜单与题目目录共用的白色容器，无圆角与顶部栏连成一体；
+   上下各留 12px 内边距 */
 .nav-panel {
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   height: 100%;
+  padding-top: 12px;
+  padding-bottom: 12px;
   background: #fff;
 }
 
@@ -212,11 +216,18 @@ const openQuestion = async (question: QuestionVO) => {
   width: 100%;
 }
 
+/* 菜单内容区：清除 Arco 默认内边距，菜单项铺满导航栏宽度 */
+.detail-nav :deep(.arco-menu-inner) {
+  padding: 0;
+}
+
+/* 菜单项：上下内边距 8、左右不留内边距，去掉默认外边距（项间无间距） */
 .detail-nav :deep(.arco-menu-item) {
-  line-height: 40px;
+  line-height: 24px;
   text-align: center;
   justify-content: center;
-  padding: 0;
+  margin: 0;
+  padding: 8px 0;
 }
 
 /* 底部题目按钮：贴底显示，点击在右侧展开题目导航栏 */

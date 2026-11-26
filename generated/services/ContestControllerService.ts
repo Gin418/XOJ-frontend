@@ -13,6 +13,7 @@ import type { BaseResponse_long_ } from "../models/BaseResponse_long_";
 import type { BaseResponse_Page_Competition_ } from "../models/BaseResponse_Page_Competition_";
 import type { BaseResponse_Page_CompetitionRankItemVO_ } from "../models/BaseResponse_Page_CompetitionRankItemVO_";
 import type { BaseResponse_Page_QuestionSubmitVO_ } from "../models/BaseResponse_Page_QuestionSubmitVO_";
+import type { BaseResponse_QuestionSubmitVO_ } from "../models/BaseResponse_QuestionSubmitVO_";
 import type { ContestAddRequest } from "../models/ContestAddRequest";
 import type { CompetitionQueryRequest } from "../models/CompetitionQueryRequest";
 import type { CompetitionSwitchUpdateRequest } from "../models/CompetitionSwitchUpdateRequest";
@@ -330,6 +331,53 @@ export class ContestControllerService {
       method: "POST",
       url: "/api/competition/submit/page",
       body: request,
+      errors: {
+        401: `Unauthorized`,
+        403: `Forbidden`,
+        404: `Not Found`,
+      },
+    });
+  }
+
+  /**
+   * getCompetitionSubmitDetail：获取竞赛提交详情（含代码、判题信息与逐用例执行结果）
+   * 管理员可查看所有人的代码，其他用户仅可查看自己的提交代码
+   * @param submitId 提交记录 id
+   * @returns BaseResponse_QuestionSubmitVO_ OK
+   * @throws ApiError
+   */
+  public static getCompetitionSubmitDetailUsingGet(
+    submitId: number
+  ): CancelablePromise<BaseResponse_QuestionSubmitVO_> {
+    return __request(OpenAPI, {
+      method: "GET",
+      url: `/api/competition/submit/${submitId}/detail`,
+      errors: {
+        401: `Unauthorized`,
+        403: `Forbidden`,
+        404: `Not Found`,
+      },
+    });
+  }
+
+  /**
+   * doCompetitionSubmit：竞赛提交代码
+   * @param competitionSubmitAddRequest 提交参数：competitionId 竞赛 id（字符串传输避免雪花 Id 精度丢失）、
+   *   questionId 题目 id、code 代码、languageId 编程语言 id、language 编程语言
+   * @returns BaseResponse_long_ OK
+   * @throws ApiError
+   */
+  public static doCompetitionSubmitUsingPost(competitionSubmitAddRequest: {
+    competitionId: string;
+    questionId?: number;
+    code?: string;
+    language?: string;
+    languageId?: number;
+  }): CancelablePromise<BaseResponse_long_ | any> {
+    return __request(OpenAPI, {
+      method: "POST",
+      url: "/api/competition/submit/do",
+      body: competitionSubmitAddRequest,
       errors: {
         401: `Unauthorized`,
         403: `Forbidden`,

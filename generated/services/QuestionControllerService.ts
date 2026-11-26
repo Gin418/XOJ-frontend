@@ -11,6 +11,7 @@ import type { BaseResponse_MySubmitStatsVO_ } from '../models/BaseResponse_MySub
 import type { BaseResponse_Page_Question_ } from '../models/BaseResponse_Page_Question_';
 import type { BaseResponse_Page_QuestionSubmitVO_ } from '../models/BaseResponse_Page_QuestionSubmitVO_';
 import type { BaseResponse_Page_QuestionVO_ } from '../models/BaseResponse_Page_QuestionVO_';
+import type { BaseResponse_QuestionSubmitVO_ } from '../models/BaseResponse_QuestionSubmitVO_';
 import type { BaseResponse_Question_ } from '../models/BaseResponse_Question_';
 import type { BaseResponse_QuestionStatsVO_ } from '../models/BaseResponse_QuestionStatsVO_';
 import type { BaseResponse_QuestionVO_ } from '../models/BaseResponse_QuestionVO_';
@@ -382,6 +383,26 @@ questionSubmitQueryRequest: QuestionSubmitQueryRequest,
             method: 'POST',
             url: '/api/question/question_submit/list/page',
             body: questionSubmitQueryRequest,
+            errors: {
+                401: `Unauthorized`,
+                403: `Forbidden`,
+                404: `Not Found`,
+            },
+        });
+    }
+
+    /**
+     * getQuestionSubmitDetail：获取题目提交详情（含用户代码、判题信息与逐用例执行结果）
+     * @param questionSubmitId 提交记录 id
+     * @returns BaseResponse_QuestionSubmitVO_ OK
+     * @throws ApiError
+     */
+    public static getQuestionSubmitDetailUsingGet(
+questionSubmitId: number,
+): CancelablePromise<BaseResponse_QuestionSubmitVO_> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: `/api/question/question_submit/${questionSubmitId}/detail`,
             errors: {
                 401: `Unauthorized`,
                 403: `Forbidden`,

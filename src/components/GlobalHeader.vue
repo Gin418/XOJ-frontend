@@ -1,7 +1,15 @@
 <template>
   <a-row id="globalHeader" align="center" :wrap="false">
+    <!-- 第一部分：OJ 标题头像；竞赛场景整列不占位，返回箭头/竞赛名/状态从原图标位置开始 -->
+    <a-col v-if="!isContestDetail" flex="160px">
+      <div class="title-bar">
+        <img class="logo" src="../assets/oj-logo.svg" />
+        <div class="title">X OJ</div>
+      </div>
+    </a-col>
+    <!-- 第二部分：导航栏 -->
     <a-col flex="auto">
-      <!-- 竞赛详情页：菜单标签替换为返回箭头 + 竞赛名称 + 状态 -->
+      <!-- 竞赛详情页：菜单替换为返回箭头 + 竞赛名称 + 状态 -->
       <div v-if="isContestDetail" class="contest-header-info">
         <a-button type="text" class="back-btn" @click="goBack">
           <template #icon>
@@ -19,21 +27,12 @@
         :selected-keys="selectedKeys"
         @menu-item-click="doMenuClick"
       >
-        <a-menu-item
-          key="0"
-          :style="{ padding: 0, marginRight: '38px' }"
-          disabled
-        >
-          <div class="title-bar">
-            <img class="logo" src="../assets/oj-logo.svg" />
-            <div class="title">X OJ</div>
-          </div>
-        </a-menu-item>
         <a-menu-item v-for="item in visibleRoutes" :key="item.path">
           {{ item.name }}
         </a-menu-item>
       </a-menu>
     </a-col>
+    <!-- 第三部分：用户头像 私信 通知 -->
     <a-col flex="220px">
       <div class="user-area">
         <template v-if="isLogin">
@@ -244,12 +243,15 @@ const doMenuClick = (key: string) => {
 </script>
 
 <style scoped>
+/* 第一部分：OJ 标题头像，独立固定列；高度 76px 撑住顶部栏（logo 移出菜单后菜单行高只有 30px） */
 .title-bar {
   display: flex;
   align-items: center;
+  height: 76px;
+  padding-left: 16px;
 }
 
-/* 竞赛详情页顶部：返回箭头 + 竞赛名称 + 状态，高度与首页菜单栏一致（menu 上下 padding 14px + logo 48px） */
+/* 竞赛详情页顶部：返回箭头 + 竞赛名称 + 状态，高度与顶部栏一致（76px） */
 .contest-header-info {
   display: flex;
   align-items: center;

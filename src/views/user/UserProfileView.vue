@@ -1,205 +1,207 @@
 <template>
-  <div id="userProfileView">
-    <a-card v-if="profileUser" class="profile-card">
-      <a-space :size="24" align="start">
-        <a-avatar :size="80" :image-url="profileUser.userAvatar || undefined">
-          {{ profileUser.userName?.slice(0, 1) }}
-        </a-avatar>
-        <div>
-          <div class="user-name-row">
-            <div class="user-name">{{ profileUser.userName }}</div>
-            <!-- 私信：仅查看他人主页时显示（不能私信自己） -->
-            <a-button
-              v-if="!isSelf"
-              type="primary"
-              size="small"
-              @click="toChat"
-            >
-              私信
-            </a-button>
-          </div>
-          <div class="user-profile">
-            {{ profileUser.userProfile || "这个人很懒，什么都没有写" }}
-          </div>
-          <div class="user-meta">
-            注册时间：{{
-              profileUser.createTime
-                ? moment(profileUser.createTime).format("YYYY-MM-DD HH:mm:ss")
-                : "-"
-            }}
-          </div>
-        </div>
-      </a-space>
-      <a-divider :margin="16" />
-      <div class="stats-row">
-        <div class="stats-item">
-          <div class="stats-value">{{ passedCount }}</div>
-          <div class="stats-label">通过数</div>
-        </div>
-        <div class="stats-item">
-          <div class="stats-value">{{ submitCount }}</div>
-          <div class="stats-label">提交数</div>
-        </div>
-        <div class="stats-item">
-          <div class="stats-value">{{ passRate }}%</div>
-          <div class="stats-label">通过率</div>
-        </div>
-      </div>
-    </a-card>
-    <a-card title="提交热力图" class="heatmap-card">
-      <!-- 等级图例：卡片标题栏右上角 -->
-      <template #extra>
-        <div class="heatmap-legend">
-          <span class="heatmap-legend-label">少</span>
-          <div
-            v-for="level in 5"
-            :key="level"
-            :class="['heatmap-cell', `heatmap-level-${level - 1}`]"
-          />
-          <span class="heatmap-legend-label">多</span>
-        </div>
-      </template>
-      <div class="heatmap-body">
-        <div class="heatmap-main">
-          <!-- 左侧星期标签：一 二 三 四 五 六 日，与网格 7 行对齐 -->
-          <div class="heatmap-weekdays">
-            <span v-for="weekday in weekdays" :key="weekday">
-              {{ weekday }}
-            </span>
-          </div>
-          <div class="heatmap-chart">
-            <div class="heatmap-grid">
-              <div
-                v-for="(day, index) in heatmapDates"
-                :key="day?.key ?? `pad-${index}`"
-                class="heatmap-day"
+  <div class="page-container">
+    <div id="userProfileView">
+      <a-card v-if="profileUser" class="profile-card">
+        <a-space :size="24" align="start">
+          <a-avatar :size="80" :image-url="profileUser.userAvatar || undefined">
+            {{ profileUser.userName?.slice(0, 1) }}
+          </a-avatar>
+          <div>
+            <div class="user-name-row">
+              <div class="user-name">{{ profileUser.userName }}</div>
+              <!-- 私信：仅查看他人主页时显示（不能私信自己） -->
+              <a-button
+                v-if="!isSelf"
+                type="primary"
+                size="small"
+                @click="toChat"
               >
-                <template v-if="day">
-                  <a-tooltip
-                    :content="`${day.key}：${day.count} 次提交`"
-                    position="top"
-                  >
-                    <div
-                      :class="['heatmap-cell', `heatmap-level-${day.level}`]"
-                    />
-                  </a-tooltip>
-                </template>
-                <div v-else class="heatmap-cell heatmap-pad" />
+                私信
+              </a-button>
+            </div>
+            <div class="user-profile">
+              {{ profileUser.userProfile || "这个人很懒，什么都没有写" }}
+            </div>
+            <div class="user-meta">
+              注册时间：{{
+                profileUser.createTime
+                  ? moment(profileUser.createTime).format("YYYY-MM-DD HH:mm:ss")
+                  : "-"
+              }}
+            </div>
+          </div>
+        </a-space>
+        <a-divider :margin="16" />
+        <div class="stats-row">
+          <div class="stats-item">
+            <div class="stats-value">{{ passedCount }}</div>
+            <div class="stats-label">通过数</div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-value">{{ submitCount }}</div>
+            <div class="stats-label">提交数</div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-value">{{ passRate }}%</div>
+            <div class="stats-label">通过率</div>
+          </div>
+        </div>
+      </a-card>
+      <a-card title="提交热力图" class="heatmap-card">
+        <!-- 等级图例：卡片标题栏右上角 -->
+        <template #extra>
+          <div class="heatmap-legend">
+            <span class="heatmap-legend-label">少</span>
+            <div
+              v-for="level in 5"
+              :key="level"
+              :class="['heatmap-cell', `heatmap-level-${level - 1}`]"
+            />
+            <span class="heatmap-legend-label">多</span>
+          </div>
+        </template>
+        <div class="heatmap-body">
+          <div class="heatmap-main">
+            <!-- 左侧星期标签：一 二 三 四 五 六 日，与网格 7 行对齐 -->
+            <div class="heatmap-weekdays">
+              <span v-for="weekday in weekdays" :key="weekday">
+                {{ weekday }}
+              </span>
+            </div>
+            <div class="heatmap-chart">
+              <div class="heatmap-grid">
+                <div
+                  v-for="(day, index) in heatmapDates"
+                  :key="day?.key ?? `pad-${index}`"
+                  class="heatmap-day"
+                >
+                  <template v-if="day">
+                    <a-tooltip
+                      :content="`${day.key}：${day.count} 次提交`"
+                      position="top"
+                    >
+                      <div
+                        :class="['heatmap-cell', `heatmap-level-${day.level}`]"
+                      />
+                    </a-tooltip>
+                  </template>
+                  <div v-else class="heatmap-cell heatmap-pad" />
+                </div>
+              </div>
+              <!-- 底部月份标签：在每月首列下方标注月份 -->
+              <div class="heatmap-months">
+                <span
+                  v-for="month in monthLabels"
+                  :key="month.col"
+                  :style="{ left: `${month.col * 15}px` }"
+                >
+                  {{ month.label }}
+                </span>
               </div>
             </div>
-            <!-- 底部月份标签：在每月首列下方标注月份 -->
-            <div class="heatmap-months">
-              <span
-                v-for="month in monthLabels"
-                :key="month.col"
-                :style="{ left: `${month.col * 15}px` }"
-              >
-                {{ month.label }}
-              </span>
-            </div>
           </div>
         </div>
-      </div>
-    </a-card>
-    <!-- 最近提交 / 近期竞赛：同一卡片，按钮切换 -->
-    <a-card>
-      <template #title>
-        <a-radio-group v-model="activityTab" type="button">
-          <a-radio value="submit">最近提交</a-radio>
-          <a-radio value="contest">近期竞赛</a-radio>
-        </a-radio-group>
-      </template>
-      <template #extra>
-        <!-- 查看全部：仅最近提交页签显示 -->
-        <a-link v-if="activityTab === 'submit'" @click="toSubmitPage">
-          查看全部
-        </a-link>
-      </template>
+      </a-card>
+      <!-- 最近提交 / 近期竞赛：同一卡片，按钮切换 -->
+      <a-card>
+        <template #title>
+          <a-radio-group v-model="activityTab" type="button">
+            <a-radio value="submit">最近提交</a-radio>
+            <a-radio value="contest">近期竞赛</a-radio>
+          </a-radio-group>
+        </template>
+        <template #extra>
+          <!-- 查看全部：仅最近提交页签显示 -->
+          <a-link v-if="activityTab === 'submit'" @click="toSubmitPage">
+            查看全部
+          </a-link>
+        </template>
 
-      <!-- 最近提交 -->
-      <a-table
-        v-if="activityTab === 'submit'"
-        table-layout="fixed"
-        :columns="columns"
-        :data="submitList"
-        :pagination="false"
-      >
-        <template #customId="{ record }">
-          <a-tooltip
-            :content="`${record.questionVO?.customId}.${record.questionVO?.title}`"
-          >
-            <span
-              class="question-title"
-              @click="
-                router.push(`/view/question/${record.questionVO?.customId}`)
-              "
+        <!-- 最近提交 -->
+        <a-table
+          v-if="activityTab === 'submit'"
+          table-layout="fixed"
+          :columns="columns"
+          :data="submitList"
+          :pagination="false"
+        >
+          <template #customId="{ record }">
+            <a-tooltip
+              :content="`${record.questionVO?.customId}.${record.questionVO?.title}`"
             >
-              <b>{{ record.questionVO?.customId }}</b
-              >.{{ record.questionVO?.title }}
-            </span>
-          </a-tooltip>
-        </template>
-        <template #language="{ record }">
-          <span>
-            {{ record.language?.text ?? "" }} /
-            {{ formatCodeSize(record.code) }}
-          </span>
-        </template>
-        <template #judgeInfo="{ record }">
-          <a-tag :color="getStatusColor(record.status)">
-            {{ statusTextMap[record.status] ?? record.status }}
-          </a-tag>
-        </template>
-        <template #time="{ record }">
-          <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
-        </template>
-        <template #memory="{ record }">
-          <span>{{ formatMemory(record.judgeInfo?.memory) }}</span>
-        </template>
-        <template #createTime="{ record }">
-          {{ moment(record.createTime).format("YYYY-MM-DD HH:mm:ss") }}
-        </template>
-      </a-table>
-
-      <!-- 近期竞赛：仅本人可见（接口查询的是当前登录用户参加的竞赛） -->
-      <template v-else>
-        <a-empty v-if="!isSelf" description="近期竞赛仅本人主页可见" />
-        <a-empty
-          v-else-if="!recentContests.length"
-          description="暂无参加的竞赛"
-        />
-        <div v-else class="contest-list">
-          <div
-            v-for="item in recentContests"
-            :key="item.id"
-            class="contest-item"
-            @click="toContestDetail(item)"
-          >
-            <div class="contest-item-header">
-              <span class="contest-item-title">
-                {{ item.competitionTitle }}
-              </span>
-              <a-tag
-                :color="contestStatusColorMap[item.status ?? ''] ?? 'gray'"
-                size="small"
+              <span
+                class="question-title"
+                @click="
+                  router.push(`/view/question/${record.questionVO?.customId}`)
+                "
               >
-                {{ contestStatusTextMap[item.status ?? ""] ?? item.status }}
-              </a-tag>
-            </div>
-            <div class="contest-item-time">
-              {{ moment(item.startTime).format("YYYY/MM/DD HH:mm") }}
-              -
-              {{ moment(item.endTime).format("YYYY/MM/DD HH:mm") }}
+                <b>{{ record.questionVO?.customId }}</b
+                >.{{ record.questionVO?.title }}
+              </span>
+            </a-tooltip>
+          </template>
+          <template #language="{ record }">
+            <span>
+              {{ record.language?.text ?? "" }} /
+              {{ formatCodeSize(record.code) }}
+            </span>
+          </template>
+          <template #judgeInfo="{ record }">
+            <a-tag :color="getJudgeStatusColor(record.status)">
+              {{ getJudgeStatusText(record.status) }}
+            </a-tag>
+          </template>
+          <template #time="{ record }">
+            <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
+          </template>
+          <template #memory="{ record }">
+            <span>{{ formatMemory(record.judgeInfo?.memory) }}</span>
+          </template>
+          <template #createTime="{ record }">
+            {{ moment(record.createTime).format("YYYY-MM-DD HH:mm:ss") }}
+          </template>
+        </a-table>
+
+        <!-- 近期竞赛：仅本人可见（接口查询的是当前登录用户参加的竞赛） -->
+        <template v-else>
+          <a-empty v-if="!isSelf" description="近期竞赛仅本人主页可见" />
+          <a-empty
+            v-else-if="!recentContests.length"
+            description="暂无参加的竞赛"
+          />
+          <div v-else class="contest-list">
+            <div
+              v-for="item in recentContests"
+              :key="item.id"
+              class="contest-item"
+              @click="toContestDetail(item)"
+            >
+              <div class="contest-item-header">
+                <span class="contest-item-title">
+                  {{ item.competitionTitle }}
+                </span>
+                <a-tag
+                  :color="contestStatusColorMap[item.status ?? ''] ?? 'gray'"
+                  size="small"
+                >
+                  {{ contestStatusTextMap[item.status ?? ""] ?? item.status }}
+                </a-tag>
+              </div>
+              <div class="contest-item-time">
+                {{ moment(item.startTime).format("YYYY/MM/DD HH:mm") }}
+                -
+                {{ moment(item.endTime).format("YYYY/MM/DD HH:mm") }}
+              </div>
             </div>
           </div>
-        </div>
-      </template>
-    </a-card>
+        </template>
+      </a-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useStore } from "vuex";
 import moment from "moment";
@@ -211,6 +213,11 @@ import {
   UserVO,
 } from "../../../generated";
 import type { CompetitionVO, DailySubmitStatsVO } from "../../../generated";
+import {
+  getJudgeStatusColor,
+  getJudgeStatusText,
+} from "@/constants/judgeStatus";
+import { onSubmitStatus } from "@/plugins/sse";
 
 const router = useRouter();
 const route = useRoute();
@@ -221,44 +228,6 @@ const loginUser = computed(() => store.state.user?.loginUser);
  * 个人资料信息
  */
 const profileUser = ref<UserVO>();
-
-/**
- * 测评结果字符串中文映射（与后端枚举字符串一致）
- */
-const statusTextMap: Record<string, string> = {
-  Compiling: "编译中",
-  Waiting_Judge: "等待判题",
-  Judging: "判题中",
-  Accepted: "答案正确",
-  Wrong_Answer: "答案错误",
-  Compile_Error: "编译错误",
-  Memory_Limit_Exceeded: "内存溢出",
-  Time_Limit_Exceeded: "运行超时",
-  Signalled: "运行错误",
-  Presentation_Error: "格式错误",
-  Nonzero_Exit_Status: "非零返回",
-  Output_Limit_Exceeded: "输出溢出",
-  Internal_Error: "系统错误",
-  File_Error: "文件错误",
-  Unknown: "未知结果",
-};
-
-/**
- * 根据测评结果返回标签颜色
- */
-const getStatusColor = (status?: string) => {
-  if (status === "Accepted") {
-    return "green";
-  }
-  if (
-    status === "Compiling" ||
-    status === "Waiting_Judge" ||
-    status === "Judging"
-  ) {
-    return "orange";
-  }
-  return "red";
-};
 
 /**
  * 格式化代码大小：不足 1KB 时显示 B，否则显示 KB
@@ -286,6 +255,9 @@ const formatMemory = (memoryKB: number | undefined) => {
 };
 
 const submitList = ref([]);
+
+// SSE 提交状态监听器的注销函数：页面卸载时移除监听
+let offSubmitStatus: (() => void) | undefined;
 
 /**
  * 用户答题统计：通过数、总提交次数
@@ -622,6 +594,22 @@ onMounted(() => {
   loadCount();
   loadHeatmap();
   loadRecentContests();
+  // 注册 SSE 提交状态监听：收到 submit-status 推送时更新提交记录列表中对应记录的状态
+  offSubmitStatus = onSubmitStatus(({ submitId, status }) => {
+    const row = submitList.value.find(
+      (item) => String(item.id) === String(submitId)
+    );
+    if (row) {
+      row.status = status;
+    } else {
+      // 列表中没有该记录（提交后列表未刷新）：重新加载列表让新记录出现
+      loadSubmitList();
+    }
+  });
+});
+
+onUnmounted(() => {
+  offSubmitStatus?.();
 });
 </script>
 

@@ -1,610 +1,597 @@
 <template>
-  <div id="viewQuestionView" :class="{ 'with-competition': isFromContest }">
-    <div class="question-view-layout">
-      <!-- 从竞赛进入时，左侧保留竞赛导航栏（与竞赛详情页共用组件）
+  <div
+    id="viewQuestionView"
+    class="question-view-layout"
+    :class="{ 'with-competition': isFromContest }"
+  >
+    <!-- 从竞赛进入时，左侧保留竞赛导航栏（与竞赛详情页共用组件）
         激活项与来源 tab 一致：从题目列表进入时停留在「题目」 -->
-      <CompetitionSideNav
-        v-if="isFromContest"
-        :competition-id="competitionId"
-        :active-key="String(route.query.tab ?? 'preview')"
-        :questions="questions"
-        :has-joined="true"
-        @nav-click="onContestNavClick"
-        @catalog-toggle="onCatalogToggle"
-      />
-      <a-row :gutter="[8, 24]" ref="rowRef" class="question-row">
-        <a-col class="left-col" :style="{ flex: `0 0 ${leftWidth}%` }">
-          <div class="left-panel">
-            <a-card class="left-tabs-card">
-              <a-tabs v-model:active-key="activeTab" @change="onTabChange">
-                <a-tab-pane key="question" title="题目">
-                  <a-card
-                    v-if="question"
-                    :title="questionTitle"
-                    :bordered="false"
+    <CompetitionSideNav
+      v-if="isFromContest"
+      :competition-id="competitionId"
+      :active-key="String(route.query.tab ?? 'preview')"
+      :questions="questions"
+      :has-joined="true"
+      @nav-click="onContestNavClick"
+      @catalog-toggle="onCatalogToggle"
+    />
+    <div class="question-row">
+      <div class="left-col">
+        <div class="left-panel">
+          <a-card class="left-tabs-card">
+            <!-- 自写导航栏：每个导航项一个 div，点击切换页签 -->
+            <div class="question-nav-wrap">
+              <div class="question-nav">
+                <div
+                  class="nav-item"
+                  :class="{ 'nav-item-active': activeTab === 'question' }"
+                  @click="onTabChange('question')"
+                >
+                  题目
+                </div>
+                <div
+                  class="nav-item"
+                  :class="{ 'nav-item-active': activeTab === 'mySubmit' }"
+                  @click="onTabChange('mySubmit')"
+                >
+                  我的提交
+                  <span class="nav-item-count">({{ submitTotal }})</span>
+                </div>
+                <div
+                  v-if="!isFromContest"
+                  class="nav-item"
+                  :class="{ 'nav-item-active': activeTab === 'comment' }"
+                  @click="onTabChange('comment')"
+                >
+                  评论
+                </div>
+              </div>
+            </div>
+            <!-- 页签内容区：v-show 切换显隐，保留各页签 DOM -->
+            <div class="tab-content">
+              <!-- 题目内容直接平铺在页签内容区，不用 a-card 包裹（避免多余 arco-card-body div） -->
+              <div
+                v-if="question"
+                v-show="activeTab === 'question'"
+                class="question-content"
+              >
+                <!-- 题目名称：h1 显示，外层 div 包裹 -->
+                <div class="question-title-wrap">
+                  <h1 class="question-title">{{ questionTitle }}</h1>
+                </div>
+                <!-- 时间、内存限制、通过率：网格三等分，项之间竖线分隔 -->
+                <div class="limit-info">
+                  <div class="limit-item">
+                    <span class="limit-label">时间限制</span>
+                    <span class="limit-value">
+                      {{ question.judgeConfig?.timeLimit ?? 0 }} ms
+                    </span>
+                  </div>
+                  <div class="limit-item">
+                    <span class="limit-label">内存限制</span>
+                    <span class="limit-value">
+                      {{ question.judgeConfig?.memoryLimit ?? 0 }} MB
+                    </span>
+                  </div>
+                  <div class="limit-item">
+                    <span class="limit-label">通过率</span>
+                    <span class="limit-value">{{ acceptRate }}</span>
+                  </div>
+                </div>
+
+                <!-- 标签显示在限制信息行下方，网格排列 -->
+                <div
+                  v-if="question.tags && question.tags.length"
+                  class="question-tags"
+                >
+                  <a-tag
+                    v-for="(tag, index) of question.tags"
+                    :key="index"
+                    color="green"
+                    >{{ tag }}
+                  </a-tag>
+                </div>
+
+                <!-- 标签下方内容统一包裹 -->
+                <div class="question-body">
+                  <h2>题目描述</h2>
+                  <MdViewer :value="question.content || ''" />
+                  <template v-if="inputFormat">
+                    <h1>输入格式</h1>
+                    <MdViewer :value="inputFormat" />
+                  </template>
+                  <template v-if="outputFormat">
+                    <h2>输出格式</h2>
+                    <MdViewer :value="outputFormat" />
+                  </template>
+                  <template
+                    v-if="question.judgeCase && question.judgeCase.length"
                   >
-                    <!-- 时间、内存限制显示在题目名称下方 -->
-                    <a-descriptions
-                      class="limit-info"
-                      :column="{ xs: 1, md: 2, lg: 3 }"
-                    >
-                      <a-descriptions-item label="时间限制">
-                        {{ question.judgeConfig?.timeLimit ?? 0 }} ms
-                      </a-descriptions-item>
-                      <a-descriptions-item label="内存限制">
-                        {{ question.judgeConfig?.memoryLimit ?? 0 }} MB
-                      </a-descriptions-item>
-                    </a-descriptions>
-
-                    <h3>题目描述</h3>
-                    <MdViewer :value="question.content || ''" />
+                    <!-- template v-for 不渲染 DOM，样例组不产生包裹 div -->
                     <template
-                      v-if="question.judgeCase && question.judgeCase.length"
+                      v-for="(out, index) of question.judgeCase"
+                      :key="index"
                     >
-                      <div
-                        v-for="(out, index) of question.judgeCase"
-                        :key="index"
-                      >
-                        <h3>测试样例 {{ index + 1 }}</h3>
-                        <h5>输入数据</h5>
-                        <MdViewer :value="out.input || ''" />
-                        <h5>输出数据</h5>
-                        <MdViewer :value="out.output || ''" />
-                      </div>
-                    </template>
-                    <p v-else>暂无测试样例</p>
-                    <template v-if="question.description">
-                      <h3>题目说明</h3>
-                      <MdViewer :value="question.description" />
-                    </template>
-
-                    <template #extra>
-                      <a-space wrap>
-                        <a-tag
-                          v-for="(tag, index) of question.tags"
-                          :key="index"
-                          color="green"
-                          >{{ tag }}
-                        </a-tag>
-                      </a-space>
-                    </template>
-                  </a-card>
-                </a-tab-pane>
-                <a-tab-pane key="mySubmit" title="我的提交">
-                  <a-card>
-                    <a-table
-                      :columns="columns"
-                      :data="submitList"
-                      :pagination="{
-                        showTotal: true,
-                        pageSize: 10,
-                        current: submitCurrent,
-                        total: submitTotal,
-                      }"
-                      @page-change="onPageChange"
-                    >
-                      <template #status="{ record }">
-                        <a-tag :color="getStatusColor(record.status)">
-                          <span
-                            class="status-link"
-                            @click="openCodeModal(record)"
-                          >
-                            {{ statusTextMap[record.status] ?? record.status }}
-                          </span>
-                        </a-tag>
-                      </template>
-                      <template #language="{ record }">
-                        {{ record.language?.text ?? "" }}
-                      </template>
-                      <template #time="{ record }">
-                        <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
-                      </template>
-                      <template #memory="{ record }">
-                        <span>{{
-                          formatMemory(record.judgeInfo?.memory)
-                        }}</span>
-                      </template>
-                      <template #createTime="{ record }">
-                        {{
-                          moment(record.createTime).format(
-                            "YYYY-MM-DD HH:mm:ss"
-                          )
-                        }}
-                      </template>
-                    </a-table>
-                  </a-card>
-                </a-tab-pane>
-                <!-- 评论页签：仅从题库（非竞赛）进入时显示，竞赛中不开放讨论 -->
-                <a-tab-pane v-if="!isFromContest" key="comment" title="评论">
-                  <a-card :bordered="false">
-                    <!-- 发评论入口：按钮右对齐 -->
-                    <div class="comment-editor">
-                      <a-button type="primary" @click="openCommentModal">
-                        发评论
-                      </a-button>
-                    </div>
-                    <!-- 评论列表 -->
-                    <a-spin :loading="commentsLoading" class="comment-spin">
-                      <a-empty
-                        v-if="!comments.length && !commentsLoading"
-                        description="暂无评论，快来抢沙发"
+                      <h3>样例# {{ index + 1 }}</h3>
+                      <MdViewer
+                        :value="toCodeBlock('in', out.input)"
+                        :code-foldable="false"
+                        :show-copy="true"
                       />
-                      <div v-else class="comment-list">
+
+                      <MdViewer
+                        :value="toCodeBlock('out', out.output)"
+                        :code-foldable="false"
+                        :show-copy="true"
+                      />
+                    </template>
+                  </template>
+                  <p v-else>暂无测试样例</p>
+                  <template v-if="question.description">
+                    <h2>题目说明</h2>
+                    <MdViewer :value="question.description" />
+                  </template>
+                </div>
+              </div>
+              <a-card v-show="activeTab === 'mySubmit'">
+                <a-table
+                  :columns="columns"
+                  :data="submitList"
+                  :pagination="{
+                    showTotal: true,
+                    pageSize: 10,
+                    current: submitCurrent,
+                    total: submitTotal,
+                  }"
+                  @page-change="onPageChange"
+                >
+                  <template #status="{ record }">
+                    <a-tag :color="getJudgeStatusColor(record.status)">
+                      <span class="status-link" @click="openCodeModal(record)">
+                        {{ getJudgeStatusText(record.status) }}
+                      </span>
+                    </a-tag>
+                  </template>
+                  <template #language="{ record }">
+                    {{ record.language?.text ?? "" }}
+                  </template>
+                  <template #time="{ record }">
+                    <span>{{ record.judgeInfo?.time ?? 0 }} ms</span>
+                  </template>
+                  <template #memory="{ record }">
+                    <span>{{ formatMemory(record.judgeInfo?.memory) }}</span>
+                  </template>
+                  <template #createTime="{ record }">
+                    {{
+                      moment(record.createTime).format("YYYY-MM-DD HH:mm:ss")
+                    }}
+                  </template>
+                </a-table>
+              </a-card>
+              <!-- 评论页签：仅从题库（非竞赛）进入时显示，竞赛中不开放讨论 -->
+              <a-card
+                v-if="!isFromContest"
+                v-show="activeTab === 'comment'"
+                :bordered="false"
+              >
+                <!-- 发评论入口：按钮右对齐 -->
+                <div class="comment-editor">
+                  <a-button type="primary" @click="openCommentModal">
+                    发评论
+                  </a-button>
+                </div>
+                <!-- 评论列表 -->
+                <a-spin :loading="commentsLoading" class="comment-spin">
+                  <a-empty
+                    v-if="!comments.length && !commentsLoading"
+                    description="暂无评论，快来抢沙发"
+                  />
+                  <div v-else class="comment-list">
+                    <div
+                      v-for="item in comments"
+                      :key="item.id"
+                      class="comment-item"
+                    >
+                      <a-avatar :size="32" class="comment-avatar">
+                        <img
+                          v-if="item.user?.userAvatar"
+                          :src="item.user.userAvatar"
+                        />
+                      </a-avatar>
+                      <div class="comment-main">
+                        <div class="comment-meta">
+                          <span
+                            class="comment-user comment-user-root comment-user-link"
+                            @click="goUserProfile(item.user?.id)"
+                          >
+                            {{ item.user?.userName ?? "匿名用户" }}
+                          </span>
+                        </div>
+                        <div class="comment-title">
+                          {{ item.title }}
+                        </div>
                         <div
-                          v-for="item in comments"
-                          :key="item.id"
-                          class="comment-item"
-                        >
-                          <a-avatar :size="32" class="comment-avatar">
-                            <img
-                              v-if="item.user?.userAvatar"
-                              :src="item.user.userAvatar"
-                            />
-                          </a-avatar>
-                          <div class="comment-main">
-                            <div class="comment-meta">
-                              <span
-                                class="comment-user comment-user-root comment-user-link"
-                                @click="goUserProfile(item.user?.id)"
-                              >
-                                {{ item.user?.userName ?? "匿名用户" }}
-                              </span>
-                            </div>
-                            <div class="comment-title">
-                              {{ item.title }}
-                            </div>
-                            <div
-                              class="comment-body"
-                              :class="{
-                                'comment-body-collapsed': !expandedIds.has(
-                                  item.id
-                                ),
-                              }"
-                              :ref="
+                          class="comment-body"
+                          :class="{
+                            'comment-body-collapsed': !expandedIds.has(item.id),
+                          }"
+                          :ref="
                                 (el) =>
                                   setCommentBodyRef(
                                     item.id,
                                     el as HTMLElement | null
                                   )
                               "
+                        >
+                          <MdViewer
+                            :value="item.content || ''"
+                            :show-copy="false"
+                          />
+                        </div>
+                        <div
+                          v-if="commentOverflow[item.id]"
+                          class="comment-expand"
+                        >
+                          <a-button
+                            type="text"
+                            size="small"
+                            @click="toggleCommentExpand(item.id)"
+                          >
+                            {{ expandedIds.has(item.id) ? "收起" : "展开" }}
+                          </a-button>
+                        </div>
+                        <!-- 评论底部：时间 + 点赞/收藏/回复 -->
+                        <div class="comment-footer">
+                          <div class="comment-time">
+                            {{
+                              moment(item.createTime).format("YYYY-MM-DD HH:mm")
+                            }}
+                          </div>
+                          <div class="comment-actions">
+                            <span
+                              class="comment-action"
+                              :class="{
+                                'comment-action-active': item.hasThumb,
+                              }"
+                              @click="doThumb(item)"
                             >
-                              <MdViewer :value="item.content || ''" />
-                            </div>
-                            <div
-                              v-if="commentOverflow[item.id]"
-                              class="comment-expand"
+                              <icon-thumb-up-fill v-if="item.hasThumb" />
+                              <icon-thumb-up v-else />
+                              <span>{{ item.thumbNum || 0 }}</span>
+                            </span>
+                            <span
+                              class="comment-action"
+                              :class="{
+                                'comment-action-active': item.hasFavour,
+                              }"
+                              @click="doFavour(item)"
                             >
-                              <a-button
-                                type="text"
-                                size="small"
-                                @click="toggleCommentExpand(item.id)"
+                              <icon-star-fill v-if="item.hasFavour" />
+                              <icon-star v-else />
+                              <span>{{ item.favourNum || 0 }}</span>
+                            </span>
+                            <span
+                              class="comment-action"
+                              @click="openInlineReply(item)"
+                            >
+                              <icon-message />
+                              <span>回复</span>
+                            </span>
+                          </div>
+                        </div>
+                        <!-- 内联回复输入框：点击回复按钮展开，发布后自动收起 -->
+                        <div
+                          v-if="inlineReply?.itemId === item.id"
+                          class="comment-inline-reply"
+                        >
+                          <a-textarea
+                            v-model="inlineReplyContent"
+                            :placeholder="`回复 @${inlineReply?.userName}`"
+                            :auto-size="{ minRows: 2, maxRows: 6 }"
+                            :max-length="2000"
+                            show-word-limit
+                            @input="onInlineReplyInput"
+                            @keyup="onInlineReplyKeyup"
+                          />
+                          <div class="comment-inline-reply-footer">
+                            <span class="comment-inline-reply-tip">
+                              支持 Markdown 语法，输入 @ 可提及用户
+                            </span>
+                            <a-button size="small" @click="closeInlineReply">
+                              取消
+                            </a-button>
+                            <a-button
+                              size="small"
+                              type="primary"
+                              :loading="inlineReplySubmitting"
+                              @click="submitInlineReply"
+                            >
+                              回复
+                            </a-button>
+                          </div>
+                        </div>
+                        <!-- 楼中楼回复区：默认展示主评论接口自带的 2 条回复，查看全部进入分页模式 -->
+                        <div v-if="item.replyCount" class="comment-replies">
+                          <div class="comment-reply-list">
+                            <a-spin :loading="repliesLoading[item.id]">
+                              <div
+                                v-for="reply in displayReplies(item)"
+                                :key="reply.id"
+                                class="comment-reply"
                               >
-                                {{ expandedIds.has(item.id) ? "收起" : "展开" }}
-                              </a-button>
-                            </div>
-                            <!-- 评论底部：时间 + 点赞/收藏/回复 -->
-                            <div class="comment-footer">
-                              <div class="comment-time">
-                                {{
-                                  moment(item.createTime).format(
-                                    "YYYY-MM-DD HH:mm"
-                                  )
-                                }}
-                              </div>
-                              <div class="comment-actions">
-                                <span
-                                  class="comment-action"
-                                  :class="{
-                                    'comment-action-active': item.hasThumb,
-                                  }"
-                                  @click="doThumb(item)"
-                                >
-                                  <icon-thumb-up-fill v-if="item.hasThumb" />
-                                  <icon-thumb-up v-else />
-                                  <span>{{ item.thumbNum || 0 }}</span>
-                                </span>
-                                <span
-                                  class="comment-action"
-                                  :class="{
-                                    'comment-action-active': item.hasFavour,
-                                  }"
-                                  @click="doFavour(item)"
-                                >
-                                  <icon-star-fill v-if="item.hasFavour" />
-                                  <icon-star v-else />
-                                  <span>{{ item.favourNum || 0 }}</span>
-                                </span>
-                                <span
-                                  class="comment-action"
-                                  @click="openInlineReply(item)"
-                                >
-                                  <icon-message />
-                                  <span>回复</span>
-                                </span>
-                              </div>
-                            </div>
-                            <!-- 内联回复输入框：点击回复按钮展开，发布后自动收起 -->
-                            <div
-                              v-if="inlineReply?.itemId === item.id"
-                              class="comment-inline-reply"
-                            >
-                              <a-textarea
-                                v-model="inlineReplyContent"
-                                :placeholder="`回复 @${inlineReply?.userName}`"
-                                :auto-size="{ minRows: 2, maxRows: 6 }"
-                                :max-length="2000"
-                                show-word-limit
-                                @input="onInlineReplyInput"
-                                @keyup="onInlineReplyKeyup"
-                              />
-                              <div class="comment-inline-reply-footer">
-                                <span class="comment-inline-reply-tip">
-                                  支持 Markdown 语法，输入 @ 可提及用户
-                                </span>
-                                <a-button
-                                  size="small"
-                                  @click="closeInlineReply"
-                                >
-                                  取消
-                                </a-button>
-                                <a-button
-                                  size="small"
-                                  type="primary"
-                                  :loading="inlineReplySubmitting"
-                                  @click="submitInlineReply"
-                                >
-                                  回复
-                                </a-button>
-                              </div>
-                            </div>
-                            <!-- 楼中楼回复区：默认展示主评论接口自带的 2 条回复，查看全部进入分页模式 -->
-                            <div v-if="item.replyCount" class="comment-replies">
-                              <div class="comment-reply-list">
-                                <a-spin :loading="repliesLoading[item.id]">
+                                <a-avatar :size="28" class="comment-avatar">
+                                  <img
+                                    v-if="reply.user?.userAvatar"
+                                    :src="reply.user.userAvatar"
+                                  />
+                                </a-avatar>
+                                <div class="comment-main">
+                                  <div class="comment-meta">
+                                    <span
+                                      class="comment-user comment-user-link"
+                                      @click="goUserProfile(reply.user?.id)"
+                                    >
+                                      {{ reply.user?.userName ?? "匿名用户" }}
+                                    </span>
+                                    <span
+                                      v-if="reply.replyUser"
+                                      class="comment-reply-target"
+                                    >
+                                      回复 @<span
+                                        class="comment-reply-target-user comment-user-link"
+                                        @click="
+                                          goUserProfile(reply.replyUser?.id)
+                                        "
+                                        >{{ reply.replyUser.userName }}</span
+                                      >
+                                    </span>
+                                  </div>
                                   <div
-                                    v-for="reply in displayReplies(item)"
-                                    :key="reply.id"
-                                    class="comment-reply"
-                                  >
-                                    <a-avatar :size="28" class="comment-avatar">
-                                      <img
-                                        v-if="reply.user?.userAvatar"
-                                        :src="reply.user.userAvatar"
-                                      />
-                                    </a-avatar>
-                                    <div class="comment-main">
-                                      <div class="comment-meta">
-                                        <span
-                                          class="comment-user comment-user-link"
-                                          @click="goUserProfile(reply.user?.id)"
-                                        >
-                                          {{
-                                            reply.user?.userName ?? "匿名用户"
-                                          }}
-                                        </span>
-                                        <span
-                                          v-if="reply.replyUser"
-                                          class="comment-reply-target"
-                                        >
-                                          回复 @<span
-                                            class="comment-reply-target-user comment-user-link"
-                                            @click="
-                                              goUserProfile(reply.replyUser?.id)
-                                            "
-                                            >{{
-                                              reply.replyUser.userName
-                                            }}</span
-                                          >
-                                        </span>
-                                      </div>
-                                      <div
-                                        class="comment-body"
-                                        :class="{
-                                          'comment-body-collapsed':
-                                            !expandedIds.has(reply.id),
-                                        }"
-                                        :ref="
+                                    class="comment-body"
+                                    :class="{
+                                      'comment-body-collapsed':
+                                        !expandedIds.has(reply.id),
+                                    }"
+                                    :ref="
                                           (el) =>
                                             setCommentBodyRef(
                                               reply.id,
                                               el as HTMLElement | null
                                             )
                                         "
+                                  >
+                                    <MdViewer :value="reply.content || ''" />
+                                  </div>
+                                  <div
+                                    v-if="commentOverflow[reply.id]"
+                                    class="comment-expand"
+                                  >
+                                    <a-button
+                                      type="text"
+                                      size="small"
+                                      @click="toggleCommentExpand(reply.id)"
+                                    >
+                                      {{
+                                        expandedIds.has(reply.id)
+                                          ? "收起"
+                                          : "展开"
+                                      }}
+                                    </a-button>
+                                  </div>
+                                  <div class="comment-footer">
+                                    <div class="comment-time">
+                                      {{
+                                        moment(reply.createTime).format(
+                                          "YYYY-MM-DD HH:mm"
+                                        )
+                                      }}
+                                    </div>
+                                    <div class="comment-actions">
+                                      <span
+                                        class="comment-action"
+                                        @click="openInlineReply(reply)"
                                       >
-                                        <MdViewer
-                                          :value="reply.content || ''"
-                                        />
-                                      </div>
-                                      <div
-                                        v-if="commentOverflow[reply.id]"
-                                        class="comment-expand"
-                                      >
-                                        <a-button
-                                          type="text"
-                                          size="small"
-                                          @click="toggleCommentExpand(reply.id)"
-                                        >
-                                          {{
-                                            expandedIds.has(reply.id)
-                                              ? "收起"
-                                              : "展开"
-                                          }}
-                                        </a-button>
-                                      </div>
-                                      <div class="comment-footer">
-                                        <div class="comment-time">
-                                          {{
-                                            moment(reply.createTime).format(
-                                              "YYYY-MM-DD HH:mm"
-                                            )
-                                          }}
-                                        </div>
-                                        <div class="comment-actions">
-                                          <span
-                                            class="comment-action"
-                                            @click="openInlineReply(reply)"
-                                          >
-                                            <icon-message />
-                                            <span>回复</span>
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <!-- 内联回复输入框：点击回复按钮展开，发布后自动收起 -->
-                                      <div
-                                        v-if="inlineReply?.itemId === reply.id"
-                                        class="comment-inline-reply"
-                                      >
-                                        <a-textarea
-                                          v-model="inlineReplyContent"
-                                          :placeholder="`回复 @${inlineReply?.userName}`"
-                                          :auto-size="{
-                                            minRows: 2,
-                                            maxRows: 6,
-                                          }"
-                                          :max-length="2000"
-                                          show-word-limit
-                                          @input="onInlineReplyInput"
-                                          @keyup="onInlineReplyKeyup"
-                                        />
-                                        <div
-                                          class="comment-inline-reply-footer"
-                                        >
-                                          <span
-                                            class="comment-inline-reply-tip"
-                                          >
-                                            支持 Markdown 语法，输入 @
-                                            可提及用户
-                                          </span>
-                                          <a-button
-                                            size="small"
-                                            @click="closeInlineReply"
-                                          >
-                                            取消
-                                          </a-button>
-                                          <a-button
-                                            size="small"
-                                            type="primary"
-                                            :loading="inlineReplySubmitting"
-                                            @click="submitInlineReply"
-                                          >
-                                            回复
-                                          </a-button>
-                                        </div>
-                                      </div>
+                                        <icon-message />
+                                        <span>回复</span>
+                                      </span>
                                     </div>
                                   </div>
-                                </a-spin>
-                                <div class="comment-replies-actions">
-                                  <!-- 预览模式：回复超过 2 条时可查看全部 -->
-                                  <span
-                                    v-if="
-                                      !repliesFullMode.has(item.id) &&
-                                      (item.replyCount ?? 0) > 2
-                                    "
-                                    class="comment-replies-more"
-                                    @click="showAllReplies(item)"
+                                  <!-- 内联回复输入框：点击回复按钮展开，发布后自动收起 -->
+                                  <div
+                                    v-if="inlineReply?.itemId === reply.id"
+                                    class="comment-inline-reply"
                                   >
-                                    查看全部 {{ item.replyCount }} 条回复
-                                  </span>
-                                  <!-- 全量模式：收起回默认 2 条预览 -->
-                                  <span
-                                    v-if="repliesFullMode.has(item.id)"
-                                    class="comment-replies-more"
-                                    @click="collapseReplies(item)"
-                                  >
-                                    收起
-                                  </span>
+                                    <a-textarea
+                                      v-model="inlineReplyContent"
+                                      :placeholder="`回复 @${inlineReply?.userName}`"
+                                      :auto-size="{
+                                        minRows: 2,
+                                        maxRows: 6,
+                                      }"
+                                      :max-length="2000"
+                                      show-word-limit
+                                      @input="onInlineReplyInput"
+                                      @keyup="onInlineReplyKeyup"
+                                    />
+                                    <div class="comment-inline-reply-footer">
+                                      <span class="comment-inline-reply-tip">
+                                        支持 Markdown 语法，输入 @ 可提及用户
+                                      </span>
+                                      <a-button
+                                        size="small"
+                                        @click="closeInlineReply"
+                                      >
+                                        取消
+                                      </a-button>
+                                      <a-button
+                                        size="small"
+                                        type="primary"
+                                        :loading="inlineReplySubmitting"
+                                        @click="submitInlineReply"
+                                      >
+                                        回复
+                                      </a-button>
+                                    </div>
+                                  </div>
                                 </div>
-                                <!-- 全量分页模式：总数超过一页（10 条）才显示分页 -->
-                                <a-pagination
-                                  v-if="
-                                    repliesFullMode.has(item.id) &&
-                                    (repliesTotal[item.id] ?? 0) > 10
-                                  "
-                                  size="small"
-                                  class="comment-reply-pagination"
-                                  :total="repliesTotal[item.id] ?? 0"
-                                  :current="repliesPage[item.id] ?? 1"
-                                  :page-size="10"
-                                  @change="
+                              </div>
+                            </a-spin>
+                            <div class="comment-replies-actions">
+                              <!-- 预览模式：回复超过 2 条时可查看全部 -->
+                              <span
+                                v-if="
+                                  !repliesFullMode.has(item.id) &&
+                                  (item.replyCount ?? 0) > 2
+                                "
+                                class="comment-replies-more"
+                                @click="showAllReplies(item)"
+                              >
+                                查看全部 {{ item.replyCount }} 条回复
+                              </span>
+                              <!-- 全量模式：收起回默认 2 条预览 -->
+                              <span
+                                v-if="repliesFullMode.has(item.id)"
+                                class="comment-replies-more"
+                                @click="collapseReplies(item)"
+                              >
+                                收起
+                              </span>
+                            </div>
+                            <!-- 全量分页模式：总数超过一页（10 条）才显示分页 -->
+                            <a-pagination
+                              v-if="
+                                repliesFullMode.has(item.id) &&
+                                (repliesTotal[item.id] ?? 0) > 10
+                              "
+                              size="small"
+                              class="comment-reply-pagination"
+                              :total="repliesTotal[item.id] ?? 0"
+                              :current="repliesPage[item.id] ?? 1"
+                              :page-size="10"
+                              @change="
                                     (page: number) =>
                                       onRepliesPageChange(item, page)
                                   "
-                                />
-                              </div>
-                            </div>
+                            />
                           </div>
                         </div>
-                        <a-pagination
-                          v-if="commentTotal > commentPageSize"
-                          class="comment-pagination"
-                          :total="commentTotal"
-                          :current="commentCurrent"
-                          :page-size="commentPageSize"
-                          show-total
-                          @change="onCommentPageChange"
-                        />
                       </div>
-                    </a-spin>
-                  </a-card>
-                </a-tab-pane>
-              </a-tabs>
-            </a-card>
-          </div>
-        </a-col>
-        <a-col class="right-col" :style="{ flex: '1 1 0%' }">
-          <a-card class="right-card">
-            <a-form :model="form" layout="inline">
-              <a-form-item field="languageId" label="" style="min-width: 160px">
-                <a-select
-                  v-model="form.languageId"
-                  :style="{ width: '160px' }"
-                  placeholder="选择编程语言"
-                >
-                  <a-option
-                    v-for="lang in languageList"
-                    :key="lang.value"
-                    :value="lang.type"
-                  >
-                    {{ lang.text }}
-                  </a-option>
-                </a-select>
-              </a-form-item>
-              <!-- 编辑器工具按钮：位于编辑器上方靠右 -->
-              <a-form-item label="" style="margin-left: auto">
-                <a-space>
-                  <a-popconfirm content="确定要清空代码吗？" @ok="clearCode">
-                    <span class="editor-tool-btn" title="清空代码">
-                      <icon-eraser />
-                    </span>
-                  </a-popconfirm>
-                  <a-popover
-                    trigger="click"
-                    position="bl"
-                    content-class="editor-settings-popover"
-                  >
-                    <span class="editor-tool-btn" title="编辑器设置">
-                      <icon-settings />
-                    </span>
-                    <template #content>
-                      <div class="editor-settings">
-                        <div class="editor-settings-title">编辑器设置</div>
-                        <div class="settings-row">
-                          <span class="settings-label">主题</span>
-                          <a-select
-                            v-model="editorTheme"
-                            :style="{ width: '200px' }"
-                            size="large"
-                          >
-                            <a-option
-                              v-for="theme in editorThemeOptions"
-                              :key="theme"
-                              :value="theme"
-                            >
-                              {{ theme }}
-                            </a-option>
-                          </a-select>
-                        </div>
-                        <div class="settings-row">
-                          <span class="settings-label">字体大小</span>
-                          <a-select
-                            v-model="editorFontSize"
-                            :style="{ width: '200px' }"
-                            size="large"
-                          >
-                            <a-option
-                              v-for="size in editorFontSizeOptions"
-                              :key="size"
-                              :value="size"
-                            >
-                              {{ size }}
-                            </a-option>
-                          </a-select>
-                        </div>
-                      </div>
-                    </template>
-                  </a-popover>
-                </a-space>
-              </a-form-item>
-            </a-form>
-            <div class="editor-wrap">
-              <CodeEditor
-                ref="codeEditorRef"
-                :value="form.code as string"
-                :language="editorLanguage"
-                :handle-change="changeCode"
-                :theme="editorTheme"
-                :font-size="editorFontSize"
-              />
-            </div>
-            <div class="submit-area">
-              <a-button type="primary" @click="doSubmit">提交代码</a-button>
+                    </div>
+                    <a-pagination
+                      v-if="commentTotal > commentPageSize"
+                      class="comment-pagination"
+                      :total="commentTotal"
+                      :current="commentCurrent"
+                      :page-size="commentPageSize"
+                      show-total
+                      @change="onCommentPageChange"
+                    />
+                  </div>
+                </a-spin>
+              </a-card>
             </div>
           </a-card>
-        </a-col>
-      </a-row>
-    </div>
-
-    <!-- 查看提交代码弹窗 -->
-    <a-modal
-      v-model:visible="codeModalVisible"
-      :title="codeModalTitle"
-      :footer="false"
-      :width="720"
-    >
-      <div v-if="codeModalVisible" class="code-modal">
-        <!-- 弹窗顶部：测评结果 + 提交时间 -->
-        <div class="code-modal-header">
-          <span>测评结果：</span>
-          <a-tag :color="getStatusColor(currentStatus)">
-            {{ currentStatusText }}
-          </a-tag>
-          <span class="header-gap">提交时间：</span>
-          <span>{{ currentCreateTime }}</span>
-        </div>
-        <a-descriptions :column="2" class="code-modal-info">
-          <a-descriptions-item label="题目">
-            <b>{{ currentQuestionCustomId }}</b
-            >.{{ currentQuestionTitle }}
-          </a-descriptions-item>
-          <a-descriptions-item label="提交用户">
-            {{ currentUserName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="语言">
-            {{ currentLanguageText }}
-          </a-descriptions-item>
-          <a-descriptions-item label="代码大小">
-            {{ currentCodeSize }}
-          </a-descriptions-item>
-          <a-descriptions-item label="运行时间">
-            {{ currentTime }} ms
-          </a-descriptions-item>
-          <a-descriptions-item label="运行内存">
-            {{ currentMemory }}
-          </a-descriptions-item>
-        </a-descriptions>
-        <div class="code-panel">
-          <div class="code-panel-header">
-            <span class="code-panel-title">&lt;/&gt; 源代码</span>
-            <a-button size="small" @click="copyCode">
-              <template #icon>
-                <icon-copy />
-              </template>
-              复制代码
-            </a-button>
-          </div>
-          <div class="code-modal-editor">
-            <CodeEditor
-              :value="currentCode"
-              :language="currentLanguage"
-              :handle-change="() => {}"
-              :read-only="true"
-              theme="vs-dark"
-            />
-          </div>
         </div>
       </div>
-    </a-modal>
+      <div class="right-col">
+        <a-card class="right-card">
+          <a-form :model="form" layout="inline">
+            <a-form-item field="languageId" label="" style="min-width: 160px">
+              <a-select
+                v-model="form.languageId"
+                :style="{ width: '160px' }"
+                placeholder="选择编程语言"
+              >
+                <a-option
+                  v-for="lang in languageList"
+                  :key="lang.value"
+                  :value="lang.type"
+                >
+                  {{ lang.text }}
+                </a-option>
+              </a-select>
+            </a-form-item>
+            <!-- 编辑器工具按钮：位于编辑器上方靠右 -->
+            <a-form-item label="" style="margin-left: auto">
+              <a-space>
+                <a-popconfirm content="确定要清空代码吗？" @ok="clearCode">
+                  <span class="editor-tool-btn" title="清空代码">
+                    <icon-eraser />
+                  </span>
+                </a-popconfirm>
+                <a-popover
+                  trigger="click"
+                  position="bl"
+                  content-class="editor-settings-popover"
+                >
+                  <span class="editor-tool-btn" title="编辑器设置">
+                    <icon-settings />
+                  </span>
+                  <template #content>
+                    <div class="editor-settings">
+                      <div class="editor-settings-title">编辑器设置</div>
+                      <div class="settings-row">
+                        <span class="settings-label">主题</span>
+                        <a-select
+                          v-model="editorTheme"
+                          :style="{ width: '200px' }"
+                          size="large"
+                        >
+                          <a-option
+                            v-for="theme in editorThemeOptions"
+                            :key="theme"
+                            :value="theme"
+                          >
+                            {{ theme }}
+                          </a-option>
+                        </a-select>
+                      </div>
+                      <div class="settings-row">
+                        <span class="settings-label">字体大小</span>
+                        <a-select
+                          v-model="editorFontSize"
+                          :style="{ width: '200px' }"
+                          size="large"
+                        >
+                          <a-option
+                            v-for="size in editorFontSizeOptions"
+                            :key="size"
+                            :value="size"
+                          >
+                            {{ size }}
+                          </a-option>
+                        </a-select>
+                      </div>
+                    </div>
+                  </template>
+                </a-popover>
+              </a-space>
+            </a-form-item>
+          </a-form>
+          <div class="editor-wrap">
+            <CodeEditor
+              ref="codeEditorRef"
+              :value="form.code as string"
+              :language="editorLanguage"
+              :handle-change="changeCode"
+              :theme="editorTheme"
+              :font-size="editorFontSize"
+            />
+          </div>
+          <div class="submit-area">
+            <!-- 竞赛已结束且未开启赛后提交时置灰并提示 -->
+            <a-tooltip :content="submitDisabledReason" :disabled="canSubmit">
+              <a-button type="primary" :disabled="!canSubmit" @click="doSubmit">
+                提交代码
+              </a-button>
+            </a-tooltip>
+          </div>
+        </a-card>
+      </div>
+    </div>
+
+    <!-- 查看提交代码弹窗：公共组件，展示提交详情、测试点与源代码 -->
+    <JudgeResultModal ref="judgeResultModalRef" :language-list="languageList" />
 
     <!-- 发评论抽屉：从右侧墙壁拉出、高度拉满，宽度占屏幕 3/4，标题 + Markdown 内容 -->
     <a-drawer
@@ -654,6 +641,9 @@
       @close="replyMentionVisible = false"
       @reposition="replyMentionVisible = false"
     />
+
+    <!-- AI 助手悬浮球：仅从题库（非竞赛）进入时显示 -->
+    <AiAssistant v-if="!isFromContest" />
   </div>
 </template>
 
@@ -672,7 +662,6 @@ import { useRoute, useRouter } from "vue-router";
 import message from "@arco-design/web-vue/es/message";
 import CompetitionSideNav from "../../components/CompetitionSideNav.vue";
 import {
-  IconCopy,
   IconEraser,
   IconMessage,
   IconSettings,
@@ -682,6 +671,8 @@ import {
   IconThumbUpFill,
 } from "@arco-design/web-vue/es/icon";
 import CodeEditor from "@/components/CodeEditor.vue";
+import AiAssistant from "@/components/AiAssistant.vue";
+import JudgeResultModal from "@/components/JudgeResultModal.vue";
 import MdViewer from "@/components/MdViewer.vue";
 import MdEditor from "@/components/MdEditor.vue";
 import MentionPop from "@/components/MentionPop.vue";
@@ -689,6 +680,7 @@ import { useStore } from "vuex";
 import moment from "moment";
 import {
   ContestControllerService,
+  Competition,
   LanguageVO,
   PostControllerService,
   PostFavourControllerService,
@@ -700,6 +692,12 @@ import {
   QuestionVO,
   UserVO,
 } from "../../../generated";
+import {
+  getJudgeStatusColor,
+  getJudgeStatusText,
+} from "@/constants/judgeStatus";
+import { onSubmitStatus } from "@/plugins/sse";
+import { getContestDetail } from "../../store/contestCache";
 
 interface Props {
   customId: string;
@@ -762,42 +760,45 @@ const loadQuestions = async () => {
 };
 
 /**
- * 测评结果字符串中文映射（与后端枚举字符串一致）
+ * 竞赛详情（从竞赛进入时加载，用于提交按钮置灰判断）
  */
-const statusTextMap: Record<string, string> = {
-  Compiling: "编译中",
-  Waiting_Judge: "等待判题",
-  Judging: "判题中",
-  Accepted: "答案正确",
-  Wrong_Answer: "答案错误",
-  Compile_Error: "编译错误",
-  Memory_Limit_Exceeded: "内存溢出",
-  Time_Limit_Exceeded: "运行超时",
-  Signalled: "运行错误",
-  Presentation_Error: "格式错误",
-  Nonzero_Exit_Status: "非零返回",
-  Output_Limit_Exceeded: "输出溢出",
-  Internal_Error: "系统错误",
-  File_Error: "文件错误",
-  Unknown: "未知结果",
+const contest = ref<Competition>();
+
+/**
+ * 加载竞赛详情：复用共享缓存（与竞赛详情页/顶部栏同一份），失败时保持可提交（后端最终校验）
+ */
+const loadContestDetail = async () => {
+  if (!competitionId.value) {
+    return;
+  }
+  const data = await getContestDetail(competitionId.value);
+  if (data) {
+    contest.value = data;
+  }
 };
 
 /**
- * 根据测评结果返回标签颜色
+ * 提交按钮置灰原因：仅从竞赛进入且竞赛已结束（END）、未开启赛后提交
+ * （allowSubmitAfterEnd 不为 1）时返回文案，其余情况为空
+ * （allowSubmitAfterEnd 未在 generated 模型中定义，通过 as any 读取）
  */
-const getStatusColor = (status?: string) => {
-  if (status === "Accepted") {
-    return "green";
+const submitDisabledReason = computed(() => {
+  if (!isFromContest.value) {
+    return "";
   }
   if (
-    status === "Compiling" ||
-    status === "Waiting_Judge" ||
-    status === "Judging"
+    contest.value?.status === "END" &&
+    Number((contest.value as any)?.allowSubmitAfterEnd ?? 0) !== 1
   ) {
-    return "orange";
+    return "竞赛已结束，未开启赛后提交";
   }
-  return "red";
-};
+  return "";
+});
+
+/**
+ * 是否可以提交代码：无置灰原因时即可提交（非竞赛来源、竞赛未结束或已开启赛后提交）
+ */
+const canSubmit = computed(() => !submitDisabledReason.value);
 
 /**
  * 格式化运行内存：大于 1MB 显示 MB，不足 1KB 显示 B，否则显示 KB
@@ -813,27 +814,25 @@ const formatMemory = (memoryKB: number | undefined) => {
   return `${size} KB`;
 };
 
-/**
- * 格式化代码大小：字节数，大于 1KB 显示 KB
- */
-const formatCodeSize = (code?: string) => {
-  if (!code) {
-    return "0 B";
-  }
-  const size = new Blob([code]).size;
-  if (size >= 1024) {
-    return `${(size / 1024).toFixed(2)} KB`;
-  }
-  return `${size} B`;
-};
-
-/**
- * 左右分栏布局（左栏固定 50%，右栏填充剩余空间）
- */
-const rowRef = ref<HTMLElement>();
-const leftWidth = ref(50);
-
 const question = ref<QuestionVO>();
+
+/**
+ * 输入格式说明（后端 DTO 已支持但前端生成模型未更新，用 as any 安全读取）
+ */
+const inputFormat = computed(() => (question.value as any)?.inputFormat ?? "");
+
+/**
+ * 输出格式说明（同上）
+ */
+const outputFormat = computed(
+  () => (question.value as any)?.outputFormat ?? ""
+);
+
+/**
+ * 将测试样例的输入/输出文本转成 Markdown 代码块，交给 MdViewer 渲染
+ */
+const toCodeBlock = (language: string, text: string | undefined) =>
+  `\`\`\`${language}\n${text ?? ""}\n\`\`\``;
 
 /**
  * 竞赛内题号（外层 customId）：从竞赛题目接口进入时才有值
@@ -850,6 +849,18 @@ const questionTitle = computed(() => {
     return `${customId}. ${title}`;
   }
   return title;
+});
+
+/**
+ * 通过率：acceptedNum / submitNum 百分比（保留一位小数），无提交时显示 0.0%
+ */
+const acceptRate = computed(() => {
+  const accepted = question.value?.acceptedNum ?? 0;
+  const submit = question.value?.submitNum ?? 0;
+  if (!submit) {
+    return "0.0%";
+  }
+  return `${((accepted / submit) * 100).toFixed(1)}%`;
 });
 
 /**
@@ -881,6 +892,9 @@ const loginUser = computed(() => store.state.user?.loginUser);
 const submitList = ref([]);
 const submitTotal = ref(0);
 const submitCurrent = ref(1);
+
+// SSE 提交状态监听器的注销函数：页面卸载时移除监听
+let offSubmitStatus: (() => void) | undefined;
 
 const columns = [
   {
@@ -974,15 +988,17 @@ const initActiveTab = () => {
 initActiveTab();
 
 /**
- * 切换标签页事件：同步 pane 参数到 URL（保持刷新后当前页签），
+ * 切换页签事件：更新激活页签并同步 pane 参数到 URL（保持刷新后当前页签），
  * 每次切换到“我的提交”/“评论”时都重新请求对应列表
  */
 const onTabChange = (key: string | number) => {
-  router.replace({ query: { ...route.query, pane: String(key) } });
-  if (key === "mySubmit") {
+  const pane = String(key);
+  activeTab.value = pane;
+  router.replace({ query: { ...route.query, pane } });
+  if (pane === "mySubmit") {
     loadSubmitList();
   }
-  if (key === "comment") {
+  if (pane === "comment") {
     loadComments();
   }
 };
@@ -1581,55 +1597,47 @@ const submitInlineReply = async () => {
 };
 
 /**
- * 查看提交代码弹窗
+ * 查看提交代码弹窗：请求详情接口后交由公共组件展示
  */
-const codeModalVisible = ref(false);
-const codeModalTitle = ref("");
-const currentCode = ref("");
-const currentLanguage = ref("java");
-const currentQuestionCustomId = ref("");
-const currentQuestionTitle = ref("");
-const currentUserName = ref("");
-const currentLanguageText = ref("");
-const currentTime = ref(0);
-const currentMemory = ref("");
-const currentCodeSize = ref("");
-const currentStatus = ref("");
-const currentStatusText = ref("");
-const currentCreateTime = ref("");
+const judgeResultModalRef = ref();
 
-const openCodeModal = (record: QuestionSubmitVO) => {
-  codeModalTitle.value = `${record.questionVO?.customId ?? ""}.${
-    record.questionVO?.title ?? ""
-  } - 提交代码`;
-  currentCode.value = record.code ?? "";
-  currentLanguage.value = record.language?.value ?? "java";
-  currentQuestionCustomId.value = record.questionVO?.customId ?? "";
-  currentQuestionTitle.value = record.questionVO?.title ?? "";
-  currentUserName.value = record.userVO?.userName ?? "";
-  currentLanguageText.value = record.language?.text ?? "";
-  currentTime.value = record.judgeInfo?.time ?? 0;
-  currentMemory.value = formatMemory(record.judgeInfo?.memory);
-  currentCodeSize.value = formatCodeSize(record.code);
-  currentStatus.value = record.status ?? "";
-  currentStatusText.value =
-    statusTextMap[record.status ?? ""] ?? record.status ?? "";
-  currentCreateTime.value = moment(record.createTime).format(
-    "YYYY-MM-DD HH:mm:ss"
-  );
-  codeModalVisible.value = true;
-};
-
-/**
- * 复制当前查看的提交代码
- */
-const copyCode = async () => {
-  try {
-    await navigator.clipboard.writeText(currentCode.value);
-    message.success("代码已复制到剪贴板");
-  } catch {
-    message.error("复制失败，请手动复制");
+const openCodeModal = async (record: QuestionSubmitVO) => {
+  if (!record.id) {
+    return;
   }
+  // 竞赛题目提交与题库提交一致：点击测评结果时请求提交详情接口，获取代码与测试点结果
+  let detail: QuestionSubmitVO;
+  let showCaseResults = true;
+  if (isFromContest.value) {
+    const res =
+      await ContestControllerService.getCompetitionSubmitDetailUsingGet(
+        record.id
+      );
+    if (res.code === 0 && res.data) {
+      detail = res.data;
+    } else if (res.code === 40101) {
+      // 非管理员查看他人提交：无代码权限，回退为列表数据
+      detail = record;
+      showCaseResults = false;
+    } else {
+      message.error(res.message || "获取提交详情失败");
+      return;
+    }
+  } else {
+    const res = await QuestionControllerService.getQuestionSubmitDetailUsingGet(
+      record.id
+    );
+    if (res.code === 0 && res.data) {
+      detail = res.data;
+    } else if (res.code === 40101) {
+      detail = { ...record, code: "" };
+      showCaseResults = false;
+    } else {
+      message.error(res.message || "获取提交详情失败");
+      return;
+    }
+  }
+  judgeResultModalRef.value?.open(detail, showCaseResults);
 };
 
 const loadData = async () => {
@@ -1732,7 +1740,8 @@ const editorLanguage = computed(() => {
 });
 
 /**
- * 提交代码
+ * 提交代码：竞赛来源走竞赛提交接口（/api/competition/submit/do），
+ * 题库来源走普通题目提交接口（/api/question/question_submit/do）
  */
 const doSubmit = async () => {
   if (!question.value?.id) {
@@ -1743,14 +1752,21 @@ const doSubmit = async () => {
     return;
   }
 
-  const res = await QuestionControllerService.doQuestionSubmitUsingPost({
-    ...form.value,
-    questionId: question.value.id,
-    // 竞赛来源时附加 competitionId，后端据此关联竞赛提交记录
-    ...(competitionId.value ? { competitionId: competitionId.value } : {}),
-  });
+  const res = competitionId.value
+    ? await ContestControllerService.doCompetitionSubmitUsingPost({
+        ...form.value,
+        questionId: question.value.id,
+        competitionId: competitionId.value,
+      })
+    : await QuestionControllerService.doQuestionSubmitUsingPost({
+        ...form.value,
+        questionId: question.value.id,
+      });
   if (res.code === 0) {
     message.success("提交成功");
+    // 提交成功后回到第 1 页并重新请求「我的提交」列表，让新提交记录立即出现
+    submitCurrent.value = 1;
+    loadSubmitList();
   } else {
     message.error("提交失败," + res.message);
   }
@@ -1763,15 +1779,28 @@ const doSubmit = async () => {
  */
 onMounted(() => {
   loadData().then(() => {
-    if (activeTab.value === "mySubmit") {
-      loadSubmitList();
-    }
+    // 始终加载「我的提交」列表：导航栏需要显示提交数
+    loadSubmitList();
     if (activeTab.value === "comment") {
       loadComments();
     }
   });
   loadLanguageList();
+  // 从竞赛进入时加载竞赛详情，用于提交按钮置灰判断
+  loadContestDetail();
   window.addEventListener("resize", onWindowResize);
+  // 注册 SSE 提交状态监听：收到 submit-status 推送时更新「我的提交」列表中对应记录的状态
+  offSubmitStatus = onSubmitStatus(({ submitId, status }) => {
+    const row = submitList.value.find(
+      (item) => String(item.id) === String(submitId)
+    );
+    if (row) {
+      row.status = status;
+    } else {
+      // 列表中没有该记录（提交后列表未刷新）：重新加载列表让新记录出现
+      loadSubmitList();
+    }
+  });
   // 评论正文内容变化（mermaid 异步渲染、代码块展开收起）后按帧节流重测
   commentBodyObserver = new MutationObserver(() => {
     cancelAnimationFrame(commentMeasureFrame);
@@ -1780,6 +1809,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  offSubmitStatus?.();
   window.removeEventListener("resize", onWindowResize);
   cancelAnimationFrame(commentMeasureFrame);
   commentBodyObserver?.disconnect();
@@ -1820,44 +1850,51 @@ watch(
 <style>
 #viewQuestionView {
   width: 100%;
-  /* 页面固定不滚动：视口高度减去顶部菜单栏间距（详情页底部间距已为 0） */
-  height: calc(100vh - 96px);
-}
-
-/* 从竞赛进入：顶部贴紧顶部栏（BasicLayout padding-top 为 76），左侧留竞赛导航栏 */
-#viewQuestionView.with-competition {
+  /* 页面固定不滚动：视口高度减去顶部菜单栏（详情页底部间距已为 0） */
   height: calc(100vh - 76px);
-  /* 抵消内容区 20px 左内边距，与竞赛详情页一致贴屏幕左墙 */
-  margin-left: -20px;
 }
 
-/* 页面整体布局：竞赛导航栏 + 原左右分栏 */
+/* 从题库进入：顶部与左右各留 12px（底部为 0），由页面自行包裹内边距 */
+#viewQuestionView:not(.with-competition) {
+  box-sizing: border-box;
+  padding: 12px 12px 0;
+}
+
+/* 从竞赛进入：左侧导航栏贴墙贴顶，页面不自带额外内边距 */
+#viewQuestionView.with-competition {
+  box-sizing: border-box;
+}
+
+/* 页面整体布局：竞赛导航栏 + 右侧内容区（包裹左右两栏） */
 .question-view-layout {
   display: flex;
-  gap: 24px;
   height: 100%;
 }
 
-/* 竞赛做题页：右侧分栏区顶部留 20px 间距（border-box 计入高度），左侧导航贴顶 */
-#viewQuestionView.with-competition .question-row {
-  box-sizing: border-box;
-  padding-top: 20px;
-}
-
-/* 非竞赛来源：不显示侧栏，布局容器退化为普通块 */
-#viewQuestionView:not(.with-competition) .question-view-layout {
-  display: block;
-}
-
-/* 分栏区占满侧栏以外剩余空间，窄窗口可收缩 */
-.question-view-layout .question-row {
+/* 右侧内容区：包裹左右两栏，网格两列等宽，列间距 8px */
+.question-row {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* 行高恒等于容器高度且允许收缩：内容超高时由各列内部滚动，
+     否则隐式 auto 行会被内容撑高，左侧滚动条消失 */
+  grid-template-rows: minmax(0, 1fr);
+  column-gap: 8px;
 }
 
-.question-row {
-  position: relative;
+/* 左右两栏各占一列；窄窗口可收缩 */
+.question-row .left-col,
+.question-row .right-col {
+  min-width: 0;
   height: 100%;
+}
+
+/* 竞赛来源：内容区四周留 8px（border-box 计入高度） */
+#viewQuestionView.with-competition .question-row {
+  box-sizing: border-box;
+  padding: 8px;
 }
 
 /* 左右两列各占满可用高度 */
@@ -1890,96 +1927,136 @@ watch(
   flex-direction: column;
 }
 
-/* tabs 占满左栏，标签头固定 */
-#viewQuestionView .left-panel .arco-tabs {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+/* 导航栏外层包裹：左右内边距与内容区对齐 */
+#viewQuestionView .left-panel .question-nav-wrap {
+  flex: none;
+  padding: 0 16px;
+  height: 50px;
 }
 
-/* tabs 内容区自适应剩余高度并独立滚动，内容与卡片边框保持间距 */
-#viewQuestionView .left-panel .arco-tabs-content {
+/* 自写导航栏：固定高度，导航项等距分布，底部细分隔线 */
+#viewQuestionView .left-panel .question-nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 40px;
+  border-bottom: 1px solid var(--color-neutral-3);
+}
+
+/* 导航项计数（我的提交数）：小号灰色，与文字保持间距 */
+#viewQuestionView .left-panel .question-nav .nav-item-count {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+/* 导航项：与 Arco line 型页签一致（字号/激活主色） */
+#viewQuestionView .left-panel .question-nav .nav-item {
+  position: relative;
+  font-size: 14px;
+  line-height: 40px;
+  color: var(--color-text-2);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+/* 激活导航项：主色加粗 + 底部 2px 主色下划线（盖住分隔线，与 Arco ink 一致） */
+#viewQuestionView .left-panel .question-nav .nav-item-active,
+#viewQuestionView .left-panel .question-nav .nav-item-active:hover {
+  color: rgb(var(--primary-6));
+  font-weight: 500;
+}
+
+#viewQuestionView .left-panel .question-nav .nav-item-active::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background-color: rgb(var(--primary-6));
+}
+
+/* 页签内容区自适应剩余高度并独立滚动，内容与卡片边框保持间距 */
+#viewQuestionView .left-panel .tab-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px 16px;
   /* 稳定滚动栏槽位：切换页签或内容高度变化时滚动条出现/消失，
      题目内容与代码块宽度保持固定不跳动 */
   scrollbar-gutter: stable;
 }
 
-/* 题目内容区：h3 小标题下方显示分隔线 */
-#viewQuestionView .left-panel .arco-tabs-content h3 {
+/* 题目内容区：小标题下方显示分隔线（h1/h2/h3 统一处理），加粗与内容区加粗文字一致 */
+#viewQuestionView .left-panel .tab-content h1,
+#viewQuestionView .left-panel .tab-content h2,
+#viewQuestionView .left-panel .tab-content h3 {
   border-bottom: 1px solid #e5e6eb;
   padding-bottom: 8px;
+  font-weight: bolder;
+  color: #000000;
 }
 
-/* 题目名称（卡片头部）下方不显示边框线 */
-#viewQuestionView .left-panel .arco-tabs-content .arco-card-header {
+/* 题目名称外层包裹：与下方限制信息保持间距 */
+#viewQuestionView .left-panel .tab-content .question-title-wrap {
+  margin-bottom: 12px;
+  display: flex;
+}
+
+/* 题目名称：h1 显示，覆盖区块标题的横线/字重样式 */
+#viewQuestionView .left-panel .tab-content .question-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-text-1);
   border-bottom: none;
+  padding-bottom: 0;
 }
 
-/* 时间限制、内存限制行下方显示分隔线 */
-#viewQuestionView .left-panel .arco-tabs-content .limit-info {
+/* 题目标签：CSS Grid 网格排列，放不下自动换行，下方横线与题目描述分隔 */
+#viewQuestionView .left-panel .tab-content .question-tags {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, auto));
+  gap: 8px;
   border-bottom: 1px solid #e5e6eb;
-  padding-bottom: 8px;
+  padding-bottom: 16px;
 }
 
-/* 限制信息紧凑靠左排列 */
-#viewQuestionView
-  .left-panel
-  .arco-tabs-content
-  .limit-info
-  .arco-descriptions-body,
-#viewQuestionView
-  .left-panel
-  .arco-tabs-content
-  .limit-info
-  .arco-descriptions-table {
-  width: auto;
+/* 限制信息：CSS Grid 网格排列，列宽按内容自适应紧凑靠左，项之间竖线分隔 */
+#viewQuestionView .left-panel .tab-content .limit-info {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  column-gap: 16px;
 }
 
-/* 限制信息字体缩小 */
-#viewQuestionView
-  .left-panel
-  .arco-tabs-content
-  .limit-info
-  .arco-descriptions-item-label,
-#viewQuestionView
-  .left-panel
-  .arco-tabs-content
-  .limit-info
-  .arco-descriptions-item-value {
+#viewQuestionView .left-panel .tab-content .limit-item + .limit-item {
+  position: relative;
+}
+
+/* 竖线定位在 column-gap 中间（左右各 8px） */
+#viewQuestionView .left-panel .tab-content .limit-item + .limit-item::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid #e5e6eb;
+}
+
+#viewQuestionView .left-panel .tab-content .limit-label {
+  margin-right: 4px;
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+#viewQuestionView .left-panel .tab-content .limit-value {
   font-size: 12px;
 }
 
-/* 标签与数值间距缩小 */
-#viewQuestionView
-  .left-panel
-  .arco-tabs-content
-  .limit-info
-  .arco-descriptions-item-label {
-  padding-right: 4px;
-}
-
-/* 每个限制之间以竖线分隔，线位于两项中间 */
-#viewQuestionView
-  .left-panel
-  .arco-tabs-content
-  .limit-info
-  .arco-descriptions-item-value:not(:last-child) {
-  border-right: 1px solid #e5e6eb;
-  padding-right: 8px;
-}
-#viewQuestionView
-  .left-panel
-  .arco-tabs-content
-  .limit-info
-  .arco-descriptions-item-label:not(:first-child) {
-  padding-left: 8px;
-}
-
-/* 右侧：纵向排列，编辑器填满剩余空间；min-width 0 允许收缩，避免窄窗口时右栏被挤到下一行 */
+/* 右侧：纵向排列，编辑器填满剩余空间；网格列项允许收缩 */
 .right-col {
   display: flex;
   flex-direction: column;
@@ -2064,52 +2141,6 @@ watch(
 /* 我的提交：判题状态可点击查看代码 */
 .status-link {
   cursor: pointer;
-}
-
-/* 查看提交代码弹窗：顶部状态行 */
-.code-modal-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  color: var(--color-text-2);
-}
-
-.code-modal-header .header-gap {
-  margin-left: 16px;
-}
-
-/* 弹窗内字段信息与编辑器间距 */
-.code-modal-info {
-  margin-bottom: 12px;
-}
-
-/* 代码面板：头部栏 + 编辑器 */
-.code-panel {
-  border: 1px solid var(--color-border-2);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.code-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--color-fill-1);
-  border-bottom: 1px solid var(--color-border-2);
-}
-
-.code-panel-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--color-text-1);
-}
-
-/* 弹窗内只读代码编辑器：固定高度 */
-.code-modal-editor {
-  height: 400px;
 }
 
 #viewQuestionView .arco-space-horizontal .arco-space-item {
@@ -2446,13 +2477,29 @@ watch(
   display: block;
 }
 
-/* 窗口变窄时（≤768px）堆叠两栏：题目在上、编辑器在下，恢复整页滚动 */
+/* 窗口变窄时（≤768px）：网格变为单列堆叠，题目在上、编辑器在下，恢复整页滚动 */
 @media (max-width: 768px) {
   #viewQuestionView {
     height: auto;
   }
-  .left-col {
-    flex: 0 0 100% !important;
+  .question-view-layout {
+    flex-direction: column;
+  }
+  .question-row {
+    flex: none;
+    width: 100%;
+    grid-template-columns: 1fr;
+    /* 单列堆叠时行高随内容，不限制为容器高度 */
+    grid-template-rows: auto;
+    row-gap: 24px;
+  }
+  .question-row .left-col,
+  .question-row .right-col {
+    height: auto;
+  }
+  #viewQuestionView.with-competition .question-row {
+    /* 单列堆叠时与导航栏之间留 24px */
+    margin-top: 24px;
   }
   .left-panel {
     height: auto;
@@ -2460,7 +2507,6 @@ watch(
   }
   .right-col {
     height: auto;
-    flex: 0 0 100% !important;
   }
   .editor-wrap {
     min-height: 400px;

@@ -1,163 +1,171 @@
 <template>
-  <div id="chatView">
-    <a-card :bordered="false" class="chat-card">
-      <div class="chat-layout">
-        <!-- 左侧会话列表 -->
-        <div class="chat-side">
-          <div class="chat-side-header">私信</div>
-          <!-- 会话搜索：前端本地过滤，不调接口 -->
-          <div class="chat-side-search">
-            <a-input v-model="convSearch" placeholder="搜索会话" allow-clear>
-              <template #prefix><icon-search /></template>
-            </a-input>
-          </div>
-          <a-spin :loading="convLoading" class="chat-side-body">
-            <div
-              v-for="conv in filteredConversations"
-              :key="conv.friendId"
-              class="conv-item"
-              :class="{ active: currentConv?.friendId === conv.friendId }"
-              @click="openConversation(conv)"
-            >
-              <a-avatar :size="40" :image-url="conv.friendAvatar || undefined">
-                {{ conv.friendName.charAt(0) }}
-              </a-avatar>
-              <div class="conv-info">
-                <div class="conv-top">
-                  <span class="conv-name">{{ conv.friendName }}</span>
-                  <span class="conv-time">{{
-                    formatConvTime(conv.lastTime)
-                  }}</span>
-                </div>
-                <div class="conv-bottom">
-                  <span class="conv-preview">{{ conv.lastContent }}</span>
-                  <a-badge
-                    v-if="conv.unreadCount > 0"
-                    :count="conv.unreadCount"
-                    :max-count="99"
-                  />
-                </div>
-              </div>
+  <div class="page-container">
+    <div id="chatView">
+      <a-card :bordered="false" class="chat-card">
+        <div class="chat-layout">
+          <!-- 左侧会话列表 -->
+          <div class="chat-side">
+            <div class="chat-side-header">私信</div>
+            <!-- 会话搜索：前端本地过滤，不调接口 -->
+            <div class="chat-side-search">
+              <a-input v-model="convSearch" placeholder="搜索会话" allow-clear>
+                <template #prefix><icon-search /></template>
+              </a-input>
             </div>
-            <a-empty
-              v-if="!convLoading && conversations.length === 0"
-              description="暂无私信"
-            />
-            <a-empty
-              v-else-if="
-                !convLoading &&
-                conversations.length > 0 &&
-                filteredConversations.length === 0
-              "
-              description="未找到相关会话"
-            />
-          </a-spin>
-        </div>
-
-        <!-- 右侧聊天窗口 -->
-        <div class="chat-main">
-          <template v-if="currentConv">
-            <div class="chat-header">{{ currentConv.friendName }}</div>
-            <div class="chat-messages-wrap">
+            <a-spin :loading="convLoading" class="chat-side-body">
               <div
-                ref="messagesRef"
-                class="chat-messages"
-                @scroll="onMessagesScroll"
+                v-for="conv in filteredConversations"
+                :key="conv.friendId"
+                class="conv-item"
+                :class="{ active: currentConv?.friendId === conv.friendId }"
+                @click="openConversation(conv)"
               >
-                <a-spin
-                  :loading="chatLoading"
-                  style="min-height: 100%; min-width: 100%"
+                <a-avatar
+                  :size="40"
+                  :image-url="conv.friendAvatar || undefined"
                 >
-                  <div v-if="loadingMore" class="load-more-tip">
-                    加载更早的消息…
+                  {{ conv.friendName.charAt(0) }}
+                </a-avatar>
+                <div class="conv-info">
+                  <div class="conv-top">
+                    <span class="conv-name">{{ conv.friendName }}</span>
+                    <span class="conv-time">{{
+                      formatConvTime(conv.lastTime)
+                    }}</span>
                   </div>
-                  <template v-for="m in chatMessages" :key="String(m.id)">
-                    <div
-                      :id="`msg-${m.id}`"
-                      class="msg-row"
-                      :class="{
-                        mine: isMine(m),
-                        highlight: highlightedId === String(m.id),
-                      }"
-                    >
-                      <!-- 自己的消息：气泡在前、头像在后，整行靠右（头像紧贴右缘） -->
-                      <template v-if="isMine(m)">
-                        <div class="msg-col">
-                          <div class="bubble">{{ m.content }}</div>
-                          <div class="msg-time">
-                            {{ formatMsgTime(m.createTime) }}
-                          </div>
-                        </div>
-                        <a-avatar :size="40" :image-url="myAvatar || undefined">
-                          {{ myName.charAt(0) }}
-                        </a-avatar>
-                      </template>
-                      <!-- 对方的消息：头像在前、气泡在后，紧靠左边 -->
-                      <template v-else>
-                        <a-avatar
-                          :size="40"
-                          :image-url="m.senderAvatar || undefined"
-                        >
-                          {{ (m.senderName || "U").charAt(0) }}
-                        </a-avatar>
-                        <div class="msg-col">
-                          <div class="bubble">{{ m.content }}</div>
-                          <div class="msg-time">
-                            {{ formatMsgTime(m.createTime) }}
-                          </div>
-                        </div>
-                      </template>
-                    </div>
-                  </template>
-                  <a-empty
-                    v-if="!chatLoading && chatMessages.length === 0"
-                    description="暂无消息，打个招呼吧"
-                  />
-                </a-spin>
-              </div>
-              <!-- 第一条未读消息的跳转按钮：悬浮在消息区右上角，不随内容滚动 -->
-              <div
-                v-if="showJumpBtn"
-                class="jump-unread-btn"
-                @click="jumpToFirstUnread"
-              >
-                <icon-arrow-down />
-                {{
-                  unreadJumpCount > 0
-                    ? `${unreadJumpCount} 条消息`
-                    : "跳到第一条未读"
-                }}
-              </div>
-            </div>
-            <div class="chat-input-area">
-              <div class="chat-input-panel">
-                <a-textarea
-                  v-model="inputContent"
-                  placeholder="输入消息"
-                  :auto-size="{ minRows: 2, maxRows: 4 }"
-                  @keydown.enter="handleEnter"
-                />
-                <div class="chat-input-footer">
-                  <span class="chat-input-tip"
-                    >Enter 发送 · Shift + Enter 换行</span
-                  >
-                  <a-button
-                    type="primary"
-                    :disabled="!inputContent.trim()"
-                    @click="sendMessage"
-                  >
-                    发送
-                  </a-button>
+                  <div class="conv-bottom">
+                    <span class="conv-preview">{{ conv.lastContent }}</span>
+                    <a-badge
+                      v-if="conv.unreadCount > 0"
+                      :count="conv.unreadCount"
+                      :max-count="99"
+                    />
+                  </div>
                 </div>
               </div>
+              <a-empty
+                v-if="!convLoading && conversations.length === 0"
+                description="暂无私信"
+              />
+              <a-empty
+                v-else-if="
+                  !convLoading &&
+                  conversations.length > 0 &&
+                  filteredConversations.length === 0
+                "
+                description="未找到相关会话"
+              />
+            </a-spin>
+          </div>
+
+          <!-- 右侧聊天窗口 -->
+          <div class="chat-main">
+            <template v-if="currentConv">
+              <div class="chat-header">{{ currentConv.friendName }}</div>
+              <div class="chat-messages-wrap">
+                <div
+                  ref="messagesRef"
+                  class="chat-messages"
+                  @scroll="onMessagesScroll"
+                >
+                  <a-spin
+                    :loading="chatLoading"
+                    style="min-height: 100%; min-width: 100%"
+                  >
+                    <div v-if="loadingMore" class="load-more-tip">
+                      加载更早的消息…
+                    </div>
+                    <template v-for="m in chatMessages" :key="String(m.id)">
+                      <div
+                        :id="`msg-${m.id}`"
+                        class="msg-row"
+                        :class="{
+                          mine: isMine(m),
+                          highlight: highlightedId === String(m.id),
+                        }"
+                      >
+                        <!-- 自己的消息：气泡在前、头像在后，整行靠右（头像紧贴右缘） -->
+                        <template v-if="isMine(m)">
+                          <div class="msg-col">
+                            <div class="bubble">{{ m.content }}</div>
+                            <div class="msg-time">
+                              {{ formatMsgTime(m.createTime) }}
+                            </div>
+                          </div>
+                          <a-avatar
+                            :size="40"
+                            :image-url="myAvatar || undefined"
+                          >
+                            {{ myName.charAt(0) }}
+                          </a-avatar>
+                        </template>
+                        <!-- 对方的消息：头像在前、气泡在后，紧靠左边 -->
+                        <template v-else>
+                          <a-avatar
+                            :size="40"
+                            :image-url="m.senderAvatar || undefined"
+                          >
+                            {{ (m.senderName || "U").charAt(0) }}
+                          </a-avatar>
+                          <div class="msg-col">
+                            <div class="bubble">{{ m.content }}</div>
+                            <div class="msg-time">
+                              {{ formatMsgTime(m.createTime) }}
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </template>
+                    <a-empty
+                      v-if="!chatLoading && chatMessages.length === 0"
+                      description="暂无消息，打个招呼吧"
+                    />
+                  </a-spin>
+                </div>
+                <!-- 第一条未读消息的跳转按钮：悬浮在消息区右上角，不随内容滚动 -->
+                <div
+                  v-if="showJumpBtn"
+                  class="jump-unread-btn"
+                  @click="jumpToFirstUnread"
+                >
+                  <icon-arrow-down />
+                  {{
+                    unreadJumpCount > 0
+                      ? `${unreadJumpCount} 条消息`
+                      : "跳到第一条未读"
+                  }}
+                </div>
+              </div>
+              <div class="chat-input-area">
+                <div class="chat-input-panel">
+                  <a-textarea
+                    v-model="inputContent"
+                    placeholder="输入消息"
+                    :auto-size="{ minRows: 2, maxRows: 4 }"
+                    @keydown.enter="handleEnter"
+                  />
+                  <div class="chat-input-footer">
+                    <span class="chat-input-tip"
+                      >Enter 发送 · Shift + Enter 换行</span
+                    >
+                    <a-button
+                      type="primary"
+                      :disabled="!inputContent.trim()"
+                      @click="sendMessage"
+                    >
+                      发送
+                    </a-button>
+                  </div>
+                </div>
+              </div>
+            </template>
+            <div v-else class="chat-placeholder">
+              <a-empty description="选择一个会话开始聊天" />
             </div>
-          </template>
-          <div v-else class="chat-placeholder">
-            <a-empty description="选择一个会话开始聊天" />
           </div>
         </div>
-      </div>
-    </a-card>
+      </a-card>
+    </div>
   </div>
 </template>
 
@@ -609,8 +617,8 @@ onUnmounted(() => {
 
 <style scoped>
 #chatView {
-  /* 内容区高度：视口 - 顶部固定栏(96px 含间距) - 内容区底部 padding */
-  height: calc(100vh - 96px - 20px);
+  /* 内容区高度：视口 - 顶部固定栏(76px) - 包裹层上下内边距(48px) */
+  height: calc(100vh - 124px);
   /* 聊天窗口整体限宽居中：宽屏下右侧窗口不至于拉得太宽 */
   max-width: 1080px;
   margin: 0 auto;

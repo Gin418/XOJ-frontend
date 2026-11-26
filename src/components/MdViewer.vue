@@ -5,6 +5,8 @@
       :preview-theme="'github'"
       :code-theme="'github'"
       :language="'zh-CN'"
+      :code-foldable="codeFoldable"
+      :class="{ 'hide-code-copy': !showCopy }"
     />
   </div>
 </template>
@@ -29,6 +31,10 @@ import { decorateMentions, getMentionUserId } from "./mentionLinks";
  */
 interface Props {
   value: string;
+  /** 是否开启代码块折叠（含展开/收起按钮），默认 false */
+  codeFoldable?: boolean;
+  /** 是否显示代码块复制按钮，默认 true（显示） */
+  showCopy?: boolean;
 }
 
 /**
@@ -36,6 +42,8 @@ interface Props {
  */
 const props = withDefaults(defineProps<Props>(), {
   value: () => "",
+  codeFoldable: false,
+  showCopy: true,
 });
 
 const router = useRouter();
@@ -97,6 +105,11 @@ onMounted(() => {
    覆盖选择器必须带同样层级的祖先类，否则特异性不足无法生效 */
 :deep(.md-editor-preview .md-editor-code .md-editor-code-head) {
   z-index: 1;
+}
+
+/* showCopy=false 时隐藏代码块头部的复制按钮 */
+.hide-code-copy :deep(.md-editor-code .md-editor-copy-button) {
+  display: none;
 }
 
 /* @ 提及链接 */

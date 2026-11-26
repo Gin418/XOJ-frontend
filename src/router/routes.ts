@@ -19,6 +19,8 @@ import ManageContestView from "@/views/contest/ManageContestView.vue";
 import ContestDetailView from "@/views/contest/ContestDetailView.vue";
 import MessageView from "@/views/MessageView.vue";
 import ChatView from "@/views/ChatView.vue";
+import OrganizationView from "@/views/organization/OrganizationView.vue";
+import OrganizationDetailView from "@/views/organization/OrganizationDetailView.vue";
 
 export const routes: Array<RouteRecordRaw> = [
   {
@@ -84,6 +86,14 @@ export const routes: Array<RouteRecordRaw> = [
     component: ManageContestView,
     meta: {
       // 未登录也可浏览竞赛列表；页面内的创建/编辑等操作自行校验权限
+    },
+  },
+  {
+    path: "/organization",
+    name: "组织",
+    component: OrganizationView,
+    meta: {
+      access: ACCESS_ENUM.USER,
     },
   },
   {
@@ -159,6 +169,16 @@ export const routes: Array<RouteRecordRaw> = [
     path: "/chat",
     name: "私信",
     component: ChatView,
+    meta: {
+      access: ACCESS_ENUM.USER,
+      hideInMenu: true,
+    },
+  },
+  {
+    // 组织内页签路径：主页使用基础路径，仅「成员」页带 /members
+    path: "/view/organization/:organizationId/:tab(members)?",
+    name: "组织详情",
+    component: OrganizationDetailView,
     meta: {
       access: ACCESS_ENUM.USER,
       hideInMenu: true,

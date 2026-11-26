@@ -1,86 +1,88 @@
 <template>
-  <div id="questionsView">
-    <a-card>
-      <a-form :model="searchParams" layout="inline">
-        <a-form-item field="keyword" style="min-width: 240px">
-          <a-input v-model="searchParams.keyword" placeholder="请输入名称" />
-        </a-form-item>
-        <a-form-item field="tags" style="min-width: 240px">
-          <a-input-tag v-model="searchParams.tags" placeholder="请输入标签" />
-        </a-form-item>
-        <a-form-item field="questionStatus">
-          <a-select
-            v-model="searchParams.questionStatus"
-            placeholder="题目状态"
-            :style="{ width: '150px' }"
-            allow-clear
-          >
-            <a-option
-              v-for="option in questionStatusOptions"
-              :key="option.value"
-              :value="option.value"
+  <div class="page-container">
+    <div id="questionsView">
+      <a-card>
+        <a-form :model="searchParams" layout="inline">
+          <a-form-item field="keyword" style="min-width: 240px">
+            <a-input v-model="searchParams.keyword" placeholder="请输入名称" />
+          </a-form-item>
+          <a-form-item field="tags" style="min-width: 240px">
+            <a-input-tag v-model="searchParams.tags" placeholder="请输入标签" />
+          </a-form-item>
+          <a-form-item field="questionStatus">
+            <a-select
+              v-model="searchParams.questionStatus"
+              placeholder="题目状态"
+              :style="{ width: '150px' }"
+              allow-clear
             >
-              {{ option.text }}
-            </a-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item>
-          <a-space>
-            <a-button type="primary" @click="doSubmit">搜索</a-button>
-            <a-button @click="doReset">重置</a-button>
-          </a-space>
-        </a-form-item>
-      </a-form>
-      <a-divider size="0" />
-      <a-table
-        :ref="tableRef"
-        :columns="columns"
-        :data="dataList"
-        :pagination="{
-          showTotal: true,
-          pageSize: 20,
-          current: searchParams.current,
-          total,
-        }"
-        @page-change="onPageChange"
-      >
-        <template #questionStatus="{ record }">
-          <a-tooltip
-            :content="questionStatusTextMap[record.questionStatus ?? 0]"
-          >
-            <icon-check-circle-fill
-              v-if="record.questionStatus === 2"
-              class="question-status-icon status-pass"
-            />
-            <icon-close-circle-fill
-              v-else-if="record.questionStatus === 1"
-              class="question-status-icon status-fail"
-            />
-          </a-tooltip>
-        </template>
-        <template #customId="{ record }">
-          <a-tooltip :content="`${record.customId}.${record.title}`">
-            <span class="question-title" @click="toQuestionPage(record)">
-              <b>{{ record.customId }}</b
-              >.{{ record.title }}
-            </span>
-          </a-tooltip>
-        </template>
-        <template #tags="{ record }">
-          <a-space wrap>
-            <a-tag
-              v-for="(tag, index) of record.tags"
-              :key="index"
-              color="green"
-              >{{ tag }}
-            </a-tag>
-          </a-space>
-        </template>
-        <template #acceptedRate="{ record }">
-          {{ formatAcceptedRate(record) }}
-        </template>
-      </a-table>
-    </a-card>
+              <a-option
+                v-for="option in questionStatusOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.text }}
+              </a-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item>
+            <a-space>
+              <a-button type="primary" @click="doSubmit">搜索</a-button>
+              <a-button @click="doReset">重置</a-button>
+            </a-space>
+          </a-form-item>
+        </a-form>
+        <a-divider size="0" />
+        <a-table
+          :ref="tableRef"
+          :columns="columns"
+          :data="dataList"
+          :pagination="{
+            showTotal: true,
+            pageSize: 20,
+            current: searchParams.current,
+            total,
+          }"
+          @page-change="onPageChange"
+        >
+          <template #questionStatus="{ record }">
+            <a-tooltip
+              :content="questionStatusTextMap[record.questionStatus ?? 0]"
+            >
+              <icon-check-circle-fill
+                v-if="record.questionStatus === 2"
+                class="question-status-icon status-pass"
+              />
+              <icon-close-circle-fill
+                v-else-if="record.questionStatus === 1"
+                class="question-status-icon status-fail"
+              />
+            </a-tooltip>
+          </template>
+          <template #customId="{ record }">
+            <a-tooltip :content="`${record.customId}.${record.title}`">
+              <span class="question-title" @click="toQuestionPage(record)">
+                <b>{{ record.customId }}</b
+                >.{{ record.title }}
+              </span>
+            </a-tooltip>
+          </template>
+          <template #tags="{ record }">
+            <a-space wrap>
+              <a-tag
+                v-for="(tag, index) of record.tags"
+                :key="index"
+                color="green"
+                >{{ tag }}
+              </a-tag>
+            </a-space>
+          </template>
+          <template #acceptedRate="{ record }">
+            {{ formatAcceptedRate(record) }}
+          </template>
+        </a-table>
+      </a-card>
+    </div>
   </div>
 </template>
 

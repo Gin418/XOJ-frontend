@@ -1,45 +1,47 @@
 <template>
-  <div id="userSettingsView">
-    <a-card title="个人资料">
-      <a-form :model="editForm" label-align="right" style="max-width: 400px">
-        <a-form-item field="userAvatar" label="头像">
-          <a-upload
-            accept="image/*"
-            :show-file-list="false"
-            :custom-request="doUploadAvatar"
-          >
-            <template #upload-button>
-              <div class="avatar-upload">
-                <a-avatar
-                  :size="64"
-                  :image-url="editForm.userAvatar || undefined"
-                >
-                  {{ (editForm.userName || "U").slice(0, 1) }}
-                </a-avatar>
-                <div class="avatar-mask">
-                  <icon-upload />
+  <div class="page-container">
+    <div id="userSettingsView">
+      <a-card title="个人资料">
+        <a-form :model="editForm" label-align="right" style="max-width: 400px">
+          <a-form-item field="userAvatar" label="头像">
+            <a-upload
+              accept="image/*"
+              :show-file-list="false"
+              :custom-request="doUploadAvatar"
+            >
+              <template #upload-button>
+                <div class="avatar-upload">
+                  <a-avatar
+                    :size="64"
+                    :image-url="editForm.userAvatar || undefined"
+                  >
+                    {{ (editForm.userName || "U").slice(0, 1) }}
+                  </a-avatar>
+                  <div class="avatar-mask">
+                    <icon-upload />
+                  </div>
                 </div>
-              </div>
-            </template>
-          </a-upload>
-        </a-form-item>
-        <a-form-item field="userName" label="昵称">
-          <a-input v-model="editForm.userName" placeholder="请输入昵称" />
-        </a-form-item>
-        <a-form-item field="userProfile" label="简介">
-          <a-textarea
-            v-model="editForm.userProfile"
-            placeholder="介绍一下自己吧"
-            :auto-size="{ minRows: 3, maxRows: 6 }"
-          />
-        </a-form-item>
-        <a-form-item>
-          <a-button type="primary" :loading="saving" @click="saveProfile">
-            保存
-          </a-button>
-        </a-form-item>
-      </a-form>
-    </a-card>
+              </template>
+            </a-upload>
+          </a-form-item>
+          <a-form-item field="userName" label="昵称">
+            <a-input v-model="editForm.userName" placeholder="请输入昵称" />
+          </a-form-item>
+          <a-form-item field="userProfile" label="简介">
+            <a-textarea
+              v-model="editForm.userProfile"
+              placeholder="介绍一下自己吧"
+              :auto-size="{ minRows: 3, maxRows: 6 }"
+            />
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" :loading="saving" @click="saveProfile">
+              保存
+            </a-button>
+          </a-form-item>
+        </a-form>
+      </a-card>
+    </div>
   </div>
 </template>
 

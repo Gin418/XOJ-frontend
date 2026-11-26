@@ -498,9 +498,9 @@ const loadHeatmap = async () => {
 </script>
 
 <style scoped>
-/* 首页容器：与页面留白 32px 规范一致，左右 24px、上下留白 */
+/* 首页容器：四周内边距统一 24px */
 .home-container {
-  padding: 16px 24px 32px;
+  padding: 24px;
 }
 
 /* 左右两栏：左栏自适应占满剩余宽度，右栏固定 320px */

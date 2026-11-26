@@ -1,43 +1,47 @@
 <template>
-  <div id="messageView">
-    <a-card :bordered="false" title="系统通知">
-      <template #extra>
-        <a-button size="small" @click="markAllRead">全部已读</a-button>
-      </template>
-      <!-- a-spin 默认 inline-block 会收缩到内容宽度，需 display:block 让列表占满一行 -->
-      <a-spin :loading="loading" style="min-height: 240px; display: block">
-        <a-list :bordered="false" :data="messageList">
-          <template #item="{ item }">
-            <div
-              class="msg-item"
-              :class="{ unread: item.isRead === 0 }"
-              @click="markRead(item)"
-            >
-              <div class="msg-body">
-                <div class="msg-title-row">
-                  <span class="msg-title">{{ item.title }}</span>
-                  <span class="msg-time">
-                    {{ moment(item.createTime).format("YYYY-MM-DD HH:mm:ss") }}
-                  </span>
+  <div class="page-container">
+    <div id="messageView">
+      <a-card :bordered="false" title="系统通知">
+        <template #extra>
+          <a-button size="small" @click="markAllRead">全部已读</a-button>
+        </template>
+        <!-- a-spin 默认 inline-block 会收缩到内容宽度，需 display:block 让列表占满一行 -->
+        <a-spin :loading="loading" style="min-height: 240px; display: block">
+          <a-list :bordered="false" :data="messageList">
+            <template #item="{ item }">
+              <div
+                class="msg-item"
+                :class="{ unread: item.isRead === 0 }"
+                @click="markRead(item)"
+              >
+                <div class="msg-body">
+                  <div class="msg-title-row">
+                    <span class="msg-title">{{ item.title }}</span>
+                    <span class="msg-time">
+                      {{
+                        moment(item.createTime).format("YYYY-MM-DD HH:mm:ss")
+                      }}
+                    </span>
+                  </div>
+                  <div class="msg-content">{{ item.content }}</div>
                 </div>
-                <div class="msg-content">{{ item.content }}</div>
+                <span v-if="item.isRead === 0" class="unread-dot"></span>
               </div>
-              <span v-if="item.isRead === 0" class="unread-dot"></span>
-            </div>
-          </template>
-          <template #empty>暂无通知</template>
-        </a-list>
-      </a-spin>
-      <div v-if="total > pageSize" class="msg-pagination">
-        <a-pagination
-          :current="current"
-          :page-size="pageSize"
-          :total="total"
-          show-total
-          @change="handlePageChange"
-        />
-      </div>
-    </a-card>
+            </template>
+            <template #empty>暂无通知</template>
+          </a-list>
+        </a-spin>
+        <div v-if="total > pageSize" class="msg-pagination">
+          <a-pagination
+            :current="current"
+            :page-size="pageSize"
+            :total="total"
+            show-total
+            @change="handlePageChange"
+          />
+        </div>
+      </a-card>
+    </div>
   </div>
 </template>
 
